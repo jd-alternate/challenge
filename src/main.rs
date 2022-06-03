@@ -15,7 +15,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // TODO: consider buffered reader
     let events_iter = parsing::csv::csv_iterator(&mut file);
     let result = processing::process_events(events_iter)?;
-    parsing::csv::write_result(result, io::stdout())?;
+    // TODO: don't use tuple for result type
+    parsing::csv::write_result(result.0, io::stdout())?;
 
     Ok(())
 }

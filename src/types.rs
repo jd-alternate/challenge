@@ -2,4 +2,6 @@
 
 // TODO: consider using decimal type
 // TODO: handle 4 digits after decimal point
-pub type Amount = u32;
+pub type Amount = i32;
+
+pub type ClientID = u16;

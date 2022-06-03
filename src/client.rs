@@ -1,15 +1,18 @@
 use crate::types::Amount;
+use crate::types::ClientID;
 
 #[derive(Debug, PartialEq)]
 pub struct Client {
+    pub id: ClientID,
     pub held: Amount,
     pub total: Amount,
     pub locked: bool,
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(id: ClientID) -> Self {
         Self {
+            id,
             held: 0,
             total: 0,
             locked: false,
@@ -33,5 +36,10 @@ impl Client {
             self.total -= amount;
             true
         }
+    }
+
+    pub fn hold(&mut self, amount: Amount) {
+        // TODO: can you hold negative money?
+        self.held += amount;
     }
 }

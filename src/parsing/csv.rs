@@ -5,8 +5,8 @@ use std::error::Error;
 use std::io::{Read, Write};
 
 use crate::client::Client;
-use crate::processing::ClientID;
 use crate::processing::Event;
+use crate::types::ClientID;
 
 // this will return an iterator which itself yields Event
 pub fn csv_iterator(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
