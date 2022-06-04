@@ -31,7 +31,7 @@ pub struct CsvEvent {
 // wraps a CSV file.
 pub fn parse_events(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
     csv::ReaderBuilder::new()
-        .trim(csv::Trim::All)
+        .trim(csv::Trim::All) // this handles whitespace for us
         .from_reader(reader)
         .into_deserialize()
         .map(|result| parse_csv_event(result.map_err(|e| e.to_string())?))
