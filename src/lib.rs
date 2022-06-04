@@ -18,9 +18,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::to_events_iter(input);
 
-    // we're logging errors for the sake of easier testing and debugging, but
-    // we're not logging here just because it wasn't in the spec.
-    // io::sink could easily be swapped out for io::stderr.
+    // `process_events` takes a writer for logging errors but we're skipping that
+    // here because it wasn't in the spec and the faster, the better. We could
+    // easily swap out io::sink for io::stderr
     let final_state = processing::process_events(events_iter, &mut io::sink())?;
 
     format::csv::write_result(final_state, output)?;
