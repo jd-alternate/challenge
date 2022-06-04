@@ -5,11 +5,10 @@ use rust_decimal_macros::dec;
 
 // Represents the current state of a client account.
 #[derive(Debug, PartialEq, Eq)]
-// TODO: privatise fields
 pub struct Client {
-    pub held: Amount,
-    pub total: Amount,
-    pub locked: bool,
+    held: Amount,
+    total: Amount,
+    locked: bool,
 }
 
 impl Client {
@@ -21,7 +20,28 @@ impl Client {
         }
     }
 
-    pub fn available(&self) -> Amount {
+    #[cfg(test)]
+    pub fn from(held: Amount, total: Amount, locked: bool) -> Self {
+        Self {
+            held,
+            total,
+            locked,
+        }
+    }
+
+    pub fn get_held(&self) -> Amount {
+        self.held
+    }
+
+    pub fn get_total(&self) -> Amount {
+        self.total
+    }
+
+    pub fn get_locked(&self) -> bool {
+        self.locked
+    }
+
+    pub fn get_available(&self) -> Amount {
         self.total - self.held
     }
 
@@ -39,7 +59,7 @@ impl Client {
             return Err(String::from("Cannot withdraw when account is locked."));
         }
 
-        if self.available() < amount {
+        if self.get_available() < amount {
             return Err(String::from("Insufficient funds."));
         } else {
             self.total -= amount;

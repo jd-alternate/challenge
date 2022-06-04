@@ -101,10 +101,10 @@ fn to_csv_row(client_id: ClientID, client: &Client) -> String {
     format!(
         "{},{},{},{},{}\n",
         client_id,
-        client.available(),
-        client.held,
-        client.total,
-        client.locked
+        client.get_available(),
+        client.get_held(),
+        client.get_total(),
+        client.get_locked()
     )
 }
 
@@ -239,22 +239,8 @@ mod test {
     fn test_write_results() {
         let mut writer = Vec::new();
         let result = HashMap::from([
-            (
-                1,
-                Client {
-                    held: dec!(20),
-                    total: dec!(100),
-                    locked: true,
-                },
-            ),
-            (
-                2,
-                Client {
-                    held: dec!(6),
-                    total: dec!(7),
-                    locked: false,
-                },
-            ),
+            (1, Client::from(dec!(20), dec!(100), true)),
+            (2, Client::from(dec!(6), dec!(7), false)),
         ]);
 
         write_result(result, &mut writer).expect("Expected no errors.");
