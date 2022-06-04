@@ -29,14 +29,16 @@ mod test {
     use rust_decimal_macros::dec;
     use std::io;
 
-    // helper method for when we just want to provide an input and assert on the output
+    // helper method for when we just want to provide an input and assert on the
+    // output
     fn assert_results(
         input_events: Vec<Result<Event, Box<dyn Error>>>,
         expected_clients_by_id: HashMap<ClientID, Client>,
         expected_errors: Vec<String>,
     ) {
         let mut error_logger = Vec::new();
-        // need to convert my error logger to a vector of strings by splitting on newlines
+        // need to convert my error logger to a vector of strings by splitting on
+        // newlines
 
         let result = process_events(input_events.into_iter(), &mut error_logger)
             .expect("Unexpectedly failed to process events.");
@@ -741,11 +743,11 @@ mod test {
     }
 
     #[test]
-    // This is a weird one. I don't think this should be the logic but I'm capturing it anyway:
-    // If a client deposits $100 and then immediately withdraws it and _then_ disputes
-    // the withdrawal, they end up with a total of zero and a held amount of -$100.
-    // This means they have 0 - -100 == $100 in available funds.
-    // TODO: work out what should actually happen here.
+    // This is a weird one. I don't think this should be the logic but I'm capturing
+    // it anyway: If a client deposits $100 and then immediately withdraws it
+    // and _then_ disputes the withdrawal, they end up with a total of zero and
+    // a held amount of -$100. This means they have 0 - -100 == $100 in
+    // available funds. TODO: work out what should actually happen here.
     fn test_disputed_withdrawal_after_equivalent_deposit() {
         let client_id = 1;
         let deposit_amount = dec!(100);

@@ -4,8 +4,8 @@ use crate::model::{
 
 use std::collections::HashMap;
 
-// This maintains the state of the system (clients and transactions) and processes
-// new events.
+// This maintains the state of the system (clients and transactions) and
+// processes new events.
 pub struct Processor {
     pub clients_by_id: HashMap<ClientID, Client>,
     pub transactions_by_id: HashMap<TransactionID, Transaction>,

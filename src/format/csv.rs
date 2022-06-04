@@ -20,9 +20,10 @@ pub struct CsvEvent {
     transaction_id: TransactionID,
     #[serde(rename = "client")]
     client_id: ClientID,
-    // We could use a custom deserializer that works with the rust decimal library's serde deserializer,
-    // but it's pretty hairy to have that gracefully deal with empty strings, so I'm just
-    // having serde treat this as a string and then I'm manually mapping to a decimal afterwards.
+    // We could use a custom deserializer that works with the rust decimal library's serde
+    // deserializer, but it's pretty hairy to have that gracefully deal with empty strings, so
+    // I'm just having serde treat this as a string and then I'm manually mapping to a decimal
+    // afterwards.
     amount: String,
 }
 
@@ -83,8 +84,9 @@ pub fn write_result(
     // This sorting is admittedly mostly for the sake of making testing easier,
     // though I assume that actually producing a report is a small part that happens
     // at the end of a long process of processing events, and I also assume that
-    // it's convenient to order records by client ID despite the spec being indifferent.
-    // If this assumption proves invalid we can ditch the sorting and just update the test.
+    // it's convenient to order records by client ID despite the spec being
+    // indifferent. If this assumption proves invalid we can ditch the sorting
+    // and just update the test.
     entries.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (client_id, client) in entries {
         writer.write_all(to_csv_row(client_id, &client).as_bytes())?;
