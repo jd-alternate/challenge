@@ -29,7 +29,7 @@ pub struct CsvEvent {
 
 // Returns an iterator which itself yields Events. It takes a reader that
 // wraps a CSV file.
-pub fn to_events_iter(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
+pub fn parse_events(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
     csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
         .from_reader(reader)
@@ -75,7 +75,7 @@ fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
 
 // Takes the resultant clients after processing events, and writes them to the
 // given writer in CSV form.
-pub fn write_result(
+pub fn write_report(
     final_state: HashMap<ClientID, Client>,
     mut writer: impl Write,
 ) -> Result<(), Box<dyn Error>> {
@@ -113,14 +113,14 @@ mod test {
     use rust_decimal_macros::dec;
 
     #[test]
-    fn test_to_events_iter_empty_file() {
+    fn test_parse_events_empty_file() {
         let input = String::new();
-        let mut events_iter = to_events_iter(input.as_bytes());
+        let mut events_iter = parse_events(input.as_bytes());
         assert!(events_iter.next().is_none());
     }
 
     #[test]
-    fn test_to_events_iter_all_event_types() {
+    fn test_parse_events_all_event_types() {
         let input = concat!(
             "type,client,tx,    amount\n",
             "deposit,1,2,3.12345\n",
@@ -130,7 +130,7 @@ mod test {
             "chargeback,11,12,\n",
         );
 
-        let events_iter = to_events_iter(input.as_bytes());
+        let events_iter = parse_events(input.as_bytes());
         let result = events_iter
             .collect::<Result<Vec<_>, _>>()
             .expect("Expected no errors.");
@@ -165,14 +165,14 @@ mod test {
     }
 
     #[test]
-    fn test_to_events_iter_malformed_row() {
+    fn test_parse_events_malformed_row() {
         let input = concat!(
             "type,client,tx,    amount\n",
             "deposit,1,1,1\n",
             "invalid\n",
             "deposit,2,2,2\n",
         );
-        let events_iter = to_events_iter(input.as_bytes());
+        let events_iter = parse_events(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(3, result.len());
 
@@ -206,9 +206,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_events_iter_unknown_type() {
+    fn test_parse_events_unknown_type() {
         let input = concat!("type,client,tx,    amount\n", "unknown,1,1,1\n",);
-        let events_iter = to_events_iter(input.as_bytes());
+        let events_iter = parse_events(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(1, result.len());
 
@@ -220,9 +220,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_events_iter_missing_amount() {
+    fn test_parse_events_missing_amount() {
         let input = concat!("type,client,tx,    amount\n", "deposit,1,1,\n",);
-        let events_iter = to_events_iter(input.as_bytes());
+        let events_iter = parse_events(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(1, result.len());
 
@@ -234,14 +234,14 @@ mod test {
     }
 
     #[test]
-    fn test_write_results() {
+    fn test_write_reports() {
         let mut writer = Vec::new();
         let result = HashMap::from([
             (1, Client::from(dec!(20), dec!(100), true)),
             (2, Client::from(dec!(6), dec!(7), false)),
         ]);
 
-        write_result(result, &mut writer).expect("Expected no errors.");
+        write_report(result, &mut writer).expect("Expected no errors.");
 
         let output = String::from_utf8(writer).expect("Not UTF-8");
         assert_eq!(
