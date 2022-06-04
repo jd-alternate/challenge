@@ -1,18 +1,15 @@
 use crate::types::Amount;
-use crate::types::ClientID;
 
 #[derive(Debug, PartialEq)]
 pub struct Client {
-    pub id: ClientID,
     pub held: Amount,
     pub total: Amount,
     pub locked: bool,
 }
 
 impl Client {
-    pub fn new(id: ClientID) -> Self {
+    pub fn new() -> Self {
         Self {
-            id,
             held: 0,
             total: 0,
             locked: false,
@@ -28,7 +25,6 @@ impl Client {
         self.total += amount;
     }
 
-    // TODO: should I mark the transaction as having failed?
     pub fn withdraw(&mut self, amount: Amount) -> bool {
         if self.available() < amount {
             false

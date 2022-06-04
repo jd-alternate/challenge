@@ -295,7 +295,7 @@ impl Processor {
     fn find_or_create_client(&mut self, client_id: ClientID) -> &mut Client {
         self.clients_by_id
             .entry(client_id)
-            .or_insert_with(|| Client::new(client_id))
+            .or_insert_with(|| Client::new())
     }
 
     fn create_transaction(&mut self, transaction_id: TransactionID, transaction: Transaction) {
@@ -374,7 +374,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -406,7 +405,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: first_deposit_amount + second_deposit_amount,
                     locked: false,
@@ -438,7 +436,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: first_deposit_amount,
                     locked: false,
@@ -493,7 +490,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount - withdrawal_amount,
                     locked: false,
@@ -525,7 +521,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -556,7 +551,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -587,7 +581,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
                     locked: false,
@@ -618,7 +611,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -649,7 +641,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -686,7 +677,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
                     locked: false,
@@ -725,7 +715,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: 0,
                     locked: true,
@@ -764,7 +753,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
                     locked: false,
@@ -794,7 +782,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: 0,
                     locked: false,
@@ -834,7 +821,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -876,7 +862,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount - withdrawal_amount,
                     locked: false,
@@ -907,7 +892,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -946,7 +930,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -981,7 +964,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
                     locked: false,
@@ -1016,7 +998,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: 0,
                     locked: true,
@@ -1058,7 +1039,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: 100,
                     locked: true,
@@ -1089,7 +1069,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -1120,7 +1099,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
@@ -1151,7 +1129,6 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    id: client_id,
                     held: 0,
                     total: deposit_amount,
                     locked: false,
