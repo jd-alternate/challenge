@@ -1,13 +1,17 @@
 // Everything CSV-related lives here.
 
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::error::Error;
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    error::Error,
+    io::{Read, Write},
+};
 
-use crate::client::Client;
-use crate::processing::Event;
-use crate::types::{Amount, ClientID, TransactionID};
+use crate::{
+    client::Client,
+    processing::Event,
+    types::{Amount, ClientID, TransactionID},
+};
 
 #[derive(Debug, Deserialize, PartialEq)]
 // intermediary struct for deserializing CSV

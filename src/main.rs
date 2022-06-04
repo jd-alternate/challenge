@@ -1,8 +1,10 @@
 // TODO: use clippy and auto-merge
-use std::env;
-use std::error::Error;
-use std::fs::File;
-use std::io::{self, Read, Write};
+use std::{
+    env,
+    error::Error,
+    fs::File,
+    io::{self, Read, Write},
+};
 mod client;
 mod parsing;
 mod processing;
@@ -33,6 +35,7 @@ fn get_file() -> Result<File, Box<dyn Error>> {
     if args.len() != 2 {
         return Err(format!("Usage: {} <filename>", args[0]).into());
     }
+
     let path = &args[1];
     let file = File::open(&path)?;
     Ok(file)

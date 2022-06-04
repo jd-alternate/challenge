@@ -1,10 +1,8 @@
-use crate::client::Client;
-use crate::types::Amount;
-use crate::types::ClientID;
-use crate::types::TransactionID;
-use std::collections::HashMap;
-use std::error::Error;
-use std::io::Write;
+use crate::{
+    client::Client,
+    types::{Amount, ClientID, TransactionID},
+};
+use std::{collections::HashMap, error::Error, io::Write};
 
 // A quick overview of the modelling here: we have a sequence of Events we need to
 // process. Some events (deposits and withdrawals) create transactions, and other
