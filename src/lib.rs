@@ -8,13 +8,19 @@ mod format;
 mod model;
 mod processing;
 
+// From a high-level, this library takes a command-line argument that points to
+// an input CSV file of events, reads the events from it, and writes the
+// resulting state to an output CSV file.
+
 pub fn run() -> Result<(), Box<dyn Error>> {
-    let file = get_file()?;
+    let file = get_file_from_cli_arg()?;
     let mut input = io::BufReader::new(file);
 
     run_aux(&mut input, &mut io::stdout())
 }
 
+// This is a more generic version of `run` which simply takes an input and
+// output, for ease of testing.
 fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::to_events_iter(input);
 
@@ -28,7 +34,7 @@ fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn
     Ok(())
 }
 
-fn get_file() -> Result<File, Box<dyn Error>> {
+fn get_file_from_cli_arg() -> Result<File, Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         return Err(format!("Usage: {} <filename>", args[0]).into());
