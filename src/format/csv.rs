@@ -28,7 +28,7 @@ pub struct CsvEvent {
 }
 
 // Returns an iterator which itself yields Events. It takes a reader that
-// wraps a CSV file.
+// reads a CSV file.
 pub fn parse_events(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
     csv::ReaderBuilder::new()
         .trim(csv::Trim::All) // this handles whitespace for us
@@ -38,31 +38,33 @@ pub fn parse_events(reader: impl Read) -> impl Iterator<Item = Result<Event, Box
 }
 
 fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
-    match csv_event.kind.as_ref() {
-        "deposit" => Ok(Event::Deposit {
+    let event = match csv_event.kind.as_ref() {
+        "deposit" => Event::Deposit {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
             amount: parse_amount(&csv_event.amount)?,
-        }),
-        "withdrawal" => Ok(Event::Withdrawal {
+        },
+        "withdrawal" => Event::Withdrawal {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
             amount: parse_amount(&csv_event.amount)?,
-        }),
-        "dispute" => Ok(Event::Dispute {
+        },
+        "dispute" => Event::Dispute {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
-        }),
-        "resolve" => Ok(Event::Resolve {
+        },
+        "resolve" => Event::Resolve {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
-        }),
-        "chargeback" => Ok(Event::Chargeback {
+        },
+        "chargeback" => Event::Chargeback {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
-        }),
-        _ => Err(format!("Unknown event kind: {}.", csv_event.kind).into()),
-    }
+        },
+        _ => return Err(format!("Unknown event kind: {}.", csv_event.kind).into()),
+    };
+
+    Ok(event)
 }
 
 fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
