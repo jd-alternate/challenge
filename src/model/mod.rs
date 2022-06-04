@@ -1,6 +1,8 @@
 pub mod client;
+pub mod event;
 pub mod transaction;
 pub use client::*;
+pub use event::*;
 pub use transaction::*;
 
 use rust_decimal::prelude::Decimal;
@@ -12,31 +14,3 @@ use rust_decimal::prelude::Decimal;
 // Client.
 
 pub type Amount = Decimal;
-
-// Represents events in our system. These do not represent successfully
-// processed events, but rather the events that need to be processed.
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Event {
-    Deposit {
-        transaction_id: TransactionID,
-        client_id: ClientID,
-        amount: Amount,
-    },
-    Withdrawal {
-        transaction_id: TransactionID,
-        client_id: ClientID,
-        amount: Amount,
-    },
-    Dispute {
-        transaction_id: TransactionID,
-        client_id: ClientID,
-    },
-    Resolve {
-        transaction_id: TransactionID,
-        client_id: ClientID,
-    },
-    Chargeback {
-        transaction_id: TransactionID,
-        client_id: ClientID,
-    },
-}
