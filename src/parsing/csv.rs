@@ -13,7 +13,7 @@ use crate::{
     types::{Amount, ClientID, TransactionID},
 };
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 // intermediary struct for deserializing CSV
 pub struct CsvEvent {
     #[serde(rename = "type")]
@@ -67,7 +67,7 @@ pub fn write_result(
     final_state: HashMap<ClientID, Client>,
     mut writer: impl Write,
 ) -> Result<(), Box<dyn Error>> {
-    writer.write(b"client,available,held,total,locked\n")?;
+    writer.write_all(b"client,available,held,total,locked\n")?;
     let mut entries: Vec<(ClientID, Client)> = final_state.into_iter().collect();
     // This sorting is admittedly mostly for the sake of making testing easier,
     // though I assume that actually producing a report is a small part that happens
@@ -76,7 +76,7 @@ pub fn write_result(
     // invalid we can ditch the sorting and just update the test.
     entries.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (client_id, client) in entries {
-        writer.write(to_csv_row(client_id, &client).as_bytes())?;
+        writer.write_all(to_csv_row(client_id, &client).as_bytes())?;
     }
 
     Ok(())

@@ -11,7 +11,7 @@ use std::{collections::HashMap, error::Error, io::Write};
 
 // Represents events in our system. These do not represent successfully processed events,
 // but rather the events that need to be processed.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Event {
     Deposit {
         transaction_id: TransactionID,
@@ -190,7 +190,7 @@ impl Processor {
                     ));
                 }
 
-                client.hold(-1 * transaction.amount);
+                client.hold(-transaction.amount);
             }
         };
 
@@ -216,7 +216,7 @@ impl Processor {
 
         match transaction.kind {
             TransactionKind::Deposit => {
-                client.hold(-1 * transaction.amount);
+                client.hold(-transaction.amount);
             }
             // ignoring whether withdrawal was successful given we can't dispute
             // unsuccessful withdrawals in the first place
@@ -252,7 +252,7 @@ impl Processor {
             // ignoring whether withdrawal was successful given we can't dispute
             // unsuccessful withdrawals in the first place
             TransactionKind::Withdrawal { .. } => {
-                client.chargeback(-1 * transaction.amount);
+                client.chargeback(-transaction.amount);
             }
         };
 
@@ -292,7 +292,7 @@ impl Processor {
     fn find_or_create_client(&mut self, client_id: ClientID) -> &mut Client {
         self.clients_by_id
             .entry(client_id)
-            .or_insert_with(|| Client::new())
+            .or_insert_with(Client::new)
     }
 
     fn create_transaction(&mut self, transaction_id: TransactionID, transaction: Transaction) {
@@ -327,7 +327,7 @@ pub fn process_events(
 
     for event in events_iter {
         if let Err(e) = processor.process_event(event?) {
-            error_logger.write(format!("{}\n", e).as_bytes())?;
+            error_logger.write_all(format!("{}\n", e).as_bytes())?;
         }
     }
 
@@ -372,7 +372,7 @@ mod test {
 
         assert_results(
             vec![Ok(Event::Deposit {
-                client_id: client_id,
+                client_id,
                 transaction_id: 1,
                 amount: deposit_amount,
             })],
@@ -397,12 +397,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 1,
                     amount: first_deposit_amount,
                 }),
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 2,
                     amount: second_deposit_amount,
                 }),
@@ -428,13 +428,13 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
-                    transaction_id: transaction_id,
+                    client_id,
+                    transaction_id,
                     amount: first_deposit_amount,
                 }),
                 Ok(Event::Deposit {
-                    client_id: client_id,
-                    transaction_id: transaction_id,
+                    client_id,
+                    transaction_id,
                     amount: 20,
                 }),
             ],
@@ -456,13 +456,13 @@ mod test {
         let deposit_amount = 100;
         let input_events = vec![
             Ok(Event::Deposit {
-                client_id: client_id,
+                client_id,
                 transaction_id: 1,
                 amount: deposit_amount,
             }),
             Err("Test".into()),
             Ok(Event::Deposit {
-                client_id: client_id,
+                client_id,
                 transaction_id: 2,
                 amount: 10,
             }),
@@ -482,12 +482,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 1,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 2,
                     amount: withdrawal_amount,
                 }),
@@ -513,12 +513,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 1,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 2,
                     amount: withdrawal_amount,
                 }),
@@ -543,12 +543,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 1,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 1,
                     amount: 100,
                 }),
@@ -574,12 +574,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -604,12 +604,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 3,
                 }),
             ],
@@ -634,7 +634,7 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
@@ -666,16 +666,16 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -700,20 +700,20 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Chargeback {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -738,20 +738,20 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -775,12 +775,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                     amount: 10,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
@@ -810,16 +810,16 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -846,21 +846,21 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                     amount: withdrawal_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
@@ -885,12 +885,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -915,20 +915,20 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -953,16 +953,16 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Resolve {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 3,
                 }),
             ],
@@ -987,16 +987,16 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
                 Ok(Event::Chargeback {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -1023,21 +1023,21 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Withdrawal {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                     amount: withdrawal_amount,
                 }),
                 Ok(Event::Dispute {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                 }),
                 Ok(Event::Chargeback {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
@@ -1062,12 +1062,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Chargeback {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                 }),
             ],
@@ -1092,12 +1092,12 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),
                 Ok(Event::Chargeback {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: 3,
                 }),
             ],
@@ -1122,7 +1122,7 @@ mod test {
         assert_results(
             vec![
                 Ok(Event::Deposit {
-                    client_id: client_id,
+                    client_id,
                     transaction_id: deposit_transaction_id,
                     amount: deposit_amount,
                 }),

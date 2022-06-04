@@ -1,7 +1,7 @@
 use crate::types::Amount;
 
 // Represents the current state of a client account.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Client {
     pub held: Amount,
     pub total: Amount,
