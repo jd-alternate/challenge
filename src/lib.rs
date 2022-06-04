@@ -4,10 +4,9 @@ use std::{
     fs::File,
     io::{self, Read, Write},
 };
-mod client;
 mod format;
+mod model;
 mod processing;
-mod types;
 
 pub fn run() -> Result<(), Box<dyn Error>> {
     let file = get_file()?;

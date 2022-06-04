@@ -9,11 +9,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{
-    client::Client,
-    processing::Event,
-    types::{Amount, ClientID, TransactionID},
-};
+use crate::model::{Amount, Client, ClientID, Event, TransactionID};
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 // intermediary struct for deserializing CSV

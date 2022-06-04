@@ -1,4 +1,4 @@
-use crate::types::Amount;
+use super::Amount;
 
 // currently getting a false positive 'unused import' error here
 use rust_decimal_macros::dec;
