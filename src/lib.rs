@@ -6,7 +6,7 @@ use std::{
 };
 mod format;
 mod model;
-mod processing;
+mod system;
 
 // From a high-level, this library takes a command-line argument that points to
 // an input CSV file of events, reads the events from it, and writes the
@@ -27,7 +27,7 @@ fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn
     // `process_events` takes a writer for logging errors but we're skipping that
     // here because it wasn't in the spec and the faster, the better. We could
     // easily swap out io::sink for io::stderr
-    let final_state = processing::process_events(events_iter, &mut io::sink())?;
+    let final_state = system::process_events(events_iter, &mut io::sink())?;
 
     format::csv::output::write_report(final_state, output)?;
 

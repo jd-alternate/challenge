@@ -1,6 +1,4 @@
-mod processor;
-use processor::Processor;
-
+use super::processor::Processor;
 use crate::model::{Client, ClientID, Event};
 
 use std::{collections::HashMap, error::Error, io::Write};
