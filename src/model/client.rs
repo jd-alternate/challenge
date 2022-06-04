@@ -29,19 +29,19 @@ impl Client {
         }
     }
 
-    pub fn get_held(&self) -> Amount {
+    pub fn held(&self) -> Amount {
         self.held
     }
 
-    pub fn get_total(&self) -> Amount {
+    pub fn total(&self) -> Amount {
         self.total
     }
 
-    pub fn get_locked(&self) -> bool {
+    pub fn locked(&self) -> bool {
         self.locked
     }
 
-    pub fn get_available(&self) -> Amount {
+    pub fn available(&self) -> Amount {
         self.total - self.held
     }
 
@@ -59,7 +59,7 @@ impl Client {
             return Err(String::from("Cannot withdraw when account is locked."));
         }
 
-        if self.get_available() < amount {
+        if self.available() < amount {
             Err(String::from("Insufficient funds."))
         } else {
             self.total -= amount;

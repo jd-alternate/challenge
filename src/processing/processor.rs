@@ -58,12 +58,7 @@ impl Processor {
         client.deposit(amount)?;
         self.create_transaction(
             transaction_id,
-            Transaction {
-                client_id,
-                amount,
-                dispute_status: DisputeStatus::None,
-                kind: TransactionKind::Deposit,
-            },
+            Transaction::new(client_id, amount, TransactionKind::Deposit),
         );
 
         Ok(())
@@ -81,12 +76,7 @@ impl Processor {
         client.withdraw(amount)?;
         self.create_transaction(
             transaction_id,
-            Transaction {
-                client_id,
-                amount,
-                dispute_status: DisputeStatus::None,
-                kind: TransactionKind::Withdrawal,
-            },
+            Transaction::new(client_id, amount, TransactionKind::Withdrawal),
         );
 
         Ok(())
@@ -100,7 +90,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        match transaction.dispute_status {
+        match transaction.dispute_status() {
             DisputeStatus::Pending => {
                 return Err(format!(
                     "Transaction {} is already under dispute.",
@@ -116,16 +106,16 @@ impl Processor {
             DisputeStatus::None => {}
         }
 
-        match transaction.kind {
+        match transaction.kind() {
             TransactionKind::Deposit => {
-                client.hold(transaction.amount);
+                client.hold(transaction.amount());
             }
             TransactionKind::Withdrawal => {
-                client.hold(-transaction.amount);
+                client.hold(-transaction.amount());
             }
         };
 
-        transaction.dispute_status = DisputeStatus::Pending;
+        transaction.set_dispute_status(DisputeStatus::Pending);
 
         Ok(())
     }
@@ -138,25 +128,25 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !matches!(transaction.dispute_status, DisputeStatus::Pending) {
+        if !matches!(transaction.dispute_status(), DisputeStatus::Pending) {
             return Err(format!(
                 "Transaction {} is not under dispute.",
                 transaction_id
             ));
         }
 
-        match transaction.kind {
+        match transaction.kind() {
             TransactionKind::Deposit => {
-                client.hold(-transaction.amount);
+                client.hold(-transaction.amount());
             }
             // ignoring whether withdrawal was successful given we can't dispute
             // unsuccessful withdrawals in the first place
             TransactionKind::Withdrawal { .. } => {
-                client.hold(transaction.amount);
+                client.hold(transaction.amount());
             }
         };
 
-        transaction.dispute_status = DisputeStatus::None;
+        transaction.set_dispute_status(DisputeStatus::None);
 
         Ok(())
     }
@@ -169,25 +159,25 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !matches!(transaction.dispute_status, DisputeStatus::Pending) {
+        if !matches!(transaction.dispute_status(), DisputeStatus::Pending) {
             return Err(format!(
                 "Transaction {} is not under dispute.",
                 transaction_id
             ));
         }
 
-        match transaction.kind {
+        match transaction.kind() {
             TransactionKind::Deposit => {
-                client.chargeback(transaction.amount);
+                client.chargeback(transaction.amount());
             }
             // ignoring whether withdrawal was successful given we can't dispute
             // unsuccessful withdrawals in the first place
             TransactionKind::Withdrawal { .. } => {
-                client.chargeback(-transaction.amount);
+                client.chargeback(-transaction.amount());
             }
         };
 
-        transaction.dispute_status = DisputeStatus::ChargedBack;
+        transaction.set_dispute_status(DisputeStatus::ChargedBack);
 
         Ok(())
     }
@@ -196,10 +186,11 @@ impl Processor {
         client_id: ClientID,
         transaction: &Transaction,
     ) -> Result<(), String> {
-        if client_id != transaction.client_id {
+        if client_id != transaction.client_id() {
             return Err(format!(
                 "Client id {} does not match transaction client id {}.",
-                client_id, transaction.client_id
+                client_id,
+                transaction.client_id()
             ));
         }
 
@@ -241,8 +232,11 @@ impl Processor {
 
         let client = self
             .clients_by_id
-            .get_mut(&transaction.client_id)
-            .ok_or(format!("Client {} does not exist.", transaction.client_id))?;
+            .get_mut(&transaction.client_id())
+            .ok_or(format!(
+                "Client {} does not exist.",
+                transaction.client_id()
+            ))?;
 
         Ok((transaction, client))
     }

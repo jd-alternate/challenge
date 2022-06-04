@@ -97,10 +97,10 @@ fn to_csv_row(client_id: ClientID, client: &Client) -> String {
     format!(
         "{},{},{},{},{}\n",
         client_id,
-        client.get_available(),
-        client.get_held(),
-        client.get_total(),
-        client.get_locked()
+        client.available(),
+        client.held(),
+        client.total(),
+        client.locked()
     )
 }
 
