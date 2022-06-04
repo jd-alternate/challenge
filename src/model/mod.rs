@@ -79,6 +79,10 @@ impl Transaction {
     pub fn set_dispute_status(&mut self, dispute_status: DisputeStatus) {
         self.dispute_status = dispute_status;
     }
+
+    pub fn is_under_dispute(&self) -> bool {
+        matches!(self.dispute_status(), DisputeStatus::Pending)
+    }
 }
 
 pub enum TransactionKind {

@@ -128,7 +128,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !matches!(transaction.dispute_status(), DisputeStatus::Pending) {
+        if !transaction.is_under_dispute() {
             return Err(format!(
                 "Transaction {} is not under dispute.",
                 transaction_id
@@ -139,9 +139,8 @@ impl Processor {
             TransactionKind::Deposit => {
                 client.hold(-transaction.amount());
             }
-            // ignoring whether withdrawal was successful given we can't dispute
-            // unsuccessful withdrawals in the first place
-            TransactionKind::Withdrawal { .. } => {
+
+            TransactionKind::Withdrawal => {
                 client.hold(transaction.amount());
             }
         };
@@ -159,7 +158,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !matches!(transaction.dispute_status(), DisputeStatus::Pending) {
+        if !transaction.is_under_dispute() {
             return Err(format!(
                 "Transaction {} is not under dispute.",
                 transaction_id
@@ -170,9 +169,8 @@ impl Processor {
             TransactionKind::Deposit => {
                 client.chargeback(transaction.amount());
             }
-            // ignoring whether withdrawal was successful given we can't dispute
-            // unsuccessful withdrawals in the first place
-            TransactionKind::Withdrawal { .. } => {
+
+            TransactionKind::Withdrawal => {
                 client.chargeback(-transaction.amount());
             }
         };
