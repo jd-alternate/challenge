@@ -9,7 +9,6 @@ use rust_decimal_macros::dec;
 pub struct Client {
     pub held: Amount,
     pub total: Amount,
-    // TODO: decide what to do if a client is locked
     pub locked: bool,
 }
 
@@ -26,16 +25,25 @@ impl Client {
         self.total - self.held
     }
 
-    pub fn deposit(&mut self, amount: Amount) {
+    pub fn deposit(&mut self, amount: Amount) -> Result<(), String> {
+        if self.locked {
+            return Err(String::from("Cannot deposit when account is locked."));
+        }
+
         self.total += amount;
+        Ok(())
     }
 
-    pub fn withdraw(&mut self, amount: Amount) -> bool {
+    pub fn withdraw(&mut self, amount: Amount) -> Result<(), String> {
+        if self.locked {
+            return Err(String::from("Cannot withdraw when account is locked."));
+        }
+
         if self.available() < amount {
-            false
+            return Err(String::from("Insufficient funds."));
         } else {
             self.total -= amount;
-            true
+            return Ok(());
         }
     }
 

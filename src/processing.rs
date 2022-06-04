@@ -48,10 +48,8 @@ struct Transaction {
 }
 
 enum TransactionKind {
-    // although theoretically a deposit can be unsuccessful, it's not possible
-    // with this implementation so we're omitting that field here
     Deposit,
-    Withdrawal { successful: bool },
+    Withdrawal,
 }
 
 enum DisputeStatus {
@@ -111,7 +109,7 @@ impl Processor {
         self.check_transaction_does_not_exist(transaction_id)?;
 
         let client = self.find_or_create_client(client_id);
-        client.deposit(amount);
+        client.deposit(amount)?;
         self.create_transaction(
             transaction_id,
             Transaction {
@@ -125,9 +123,6 @@ impl Processor {
         Ok(())
     }
 
-    // Arguably, instead of storing the transaction as unsuccessful you could just
-    // not store it, but then you'd get a less useful error message upon the unlikely
-    // event that a dispute is attempted.
     fn withdraw(
         &mut self,
         transaction_id: TransactionID,
@@ -137,22 +132,18 @@ impl Processor {
         self.check_transaction_does_not_exist(transaction_id)?;
 
         let client = self.find_or_create_client(client_id);
-        let successful = client.withdraw(amount);
+        client.withdraw(amount)?;
         self.create_transaction(
             transaction_id,
             Transaction {
                 client_id,
                 amount,
                 dispute_status: DisputeStatus::None,
-                kind: TransactionKind::Withdrawal { successful },
+                kind: TransactionKind::Withdrawal,
             },
         );
 
-        if successful {
-            Ok(())
-        } else {
-            Err(String::from("Insufficient funds."))
-        }
+        Ok(())
     }
 
     fn dispute(
@@ -183,14 +174,7 @@ impl Processor {
             TransactionKind::Deposit => {
                 client.hold(transaction.amount);
             }
-            TransactionKind::Withdrawal { successful } => {
-                if !successful {
-                    return Err(format!(
-                        "Original withdrawal ({}) was not successful, so it cannot be disputed.",
-                        transaction_id
-                    ));
-                }
-
+            TransactionKind::Withdrawal => {
                 client.hold(-transaction.amount);
             }
         };
@@ -792,6 +776,7 @@ mod test {
     }
 
     #[test]
+    // worth verifying that we would not in fact create a transaction in this case.
     fn test_unsuccessful_disputed_withdrawal_due_to_unsuccessful_withdrawal() {
         let client_id = 1;
         let withdrawal_transaction_id = 2;
@@ -818,9 +803,7 @@ mod test {
             )]),
             vec![
                 String::from("Insufficient funds."),
-                String::from(
-                    "Original withdrawal (2) was not successful, so it cannot be disputed.",
-                ),
+                String::from("Transaction 2 not found."),
             ],
         );
     }
