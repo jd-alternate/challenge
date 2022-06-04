@@ -6,7 +6,7 @@ use rust_decimal::prelude::Decimal;
 // A quick overview of the modelling here: we have a sequence of Events we need to
 // process. Some events (deposits and withdrawals) create transactions, and other
 // events (disputes/resolves/chargebacks) act on transactions. Any event can
-// update the state of a client.
+// update the state of a Client, and every event is associated with one Client.
 
 // Defining these type aliases so that we can easily update them if needed.
 pub type Amount = Decimal;
