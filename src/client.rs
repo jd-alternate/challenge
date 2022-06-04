@@ -60,10 +60,10 @@ impl Client {
         }
 
         if self.get_available() < amount {
-            return Err(String::from("Insufficient funds."));
+            Err(String::from("Insufficient funds."))
         } else {
             self.total -= amount;
-            return Ok(());
+            Ok(())
         }
     }
 

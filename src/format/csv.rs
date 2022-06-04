@@ -69,7 +69,7 @@ fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
 }
 
 fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
-    if amount == "" {
+    if amount.is_empty() {
         return Err("Missing amount.".into());
     }
 
@@ -117,8 +117,8 @@ mod test {
     #[test]
     fn test_to_events_iter_empty_file() {
         let input = String::new();
-        let events_iter = to_events_iter(input.as_bytes());
-        assert!(events_iter.collect::<Vec<_>>().is_empty());
+        let mut events_iter = to_events_iter(input.as_bytes());
+        assert!(events_iter.next().is_none());
     }
 
     #[test]
