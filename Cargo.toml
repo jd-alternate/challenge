@@ -9,3 +9,11 @@ serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = "1.2.1"
+assert_cmd = "2.0.4"
+tempfile = "3.3.0"
+
+[[bin]]
+name = "challenge"
+
+[lib]
+name = "challenge"

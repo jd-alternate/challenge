@@ -32,7 +32,7 @@ pub fn to_events_iter(reader: impl Read) -> impl Iterator<Item = Result<Event, B
         .trim(csv::Trim::All)
         .from_reader(reader)
         .into_deserialize()
-        .map(|result| parse_csv_event(result?))
+        .map(|result| parse_csv_event(result.map_err(|e| e.to_string())?))
 }
 
 fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
