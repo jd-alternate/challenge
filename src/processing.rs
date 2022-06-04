@@ -3,9 +3,6 @@ use crate::{
     types::{Amount, ClientID, TransactionID},
 };
 
-// currently getting a false positive 'unused import' error here
-use rust_decimal_macros::dec;
-
 use std::{collections::HashMap, error::Error, io::Write};
 
 // A quick overview of the modelling here: we have a sequence of Events we need to
@@ -340,10 +337,10 @@ pub fn process_events(
 
 #[cfg(test)]
 mod test {
-    use std::io;
-
     use super::*;
     use pretty_assertions::assert_eq;
+    use rust_decimal_macros::dec;
+    use std::io;
 
     // helper method for when we just want to provide an input and assert on the output
     fn assert_results(

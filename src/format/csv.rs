@@ -2,9 +2,6 @@
 
 use core::str::FromStr;
 
-// currently getting a false positive 'unused import' error here
-use rust_decimal_macros::dec;
-
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -27,7 +24,7 @@ pub struct CsvEvent {
     transaction_id: TransactionID,
     #[serde(rename = "client")]
     client_id: ClientID,
-    // could use a custom deserializer that works with the rust decimal library's serde deserializer,
+    // We could use a custom deserializer that works with the rust decimal library's serde deserializer,
     // but it's pretty hairy to have that gracefully deal with empty strings, so I'm just
     // having serde treat this as a string and then I'm manually mapping to a decimal afterwards.
     amount: String,
@@ -115,18 +112,26 @@ fn to_csv_row(client_id: ClientID, client: &Client) -> String {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+    use rust_decimal_macros::dec;
 
     #[test]
     fn test_to_events_iter_empty_file() {
         let input = String::new();
-        let events_iter =
-            to_events_iter(input.as_bytes()).map(|result| result.map_err(|e| e.to_string()));
-        assert_eq!(events_iter.collect::<Vec<_>>(), vec![]);
+        let events_iter = to_events_iter(input.as_bytes());
+        assert!(events_iter.collect::<Vec<_>>().is_empty());
     }
 
     #[test]
     fn test_to_events_iter_all_event_types() {
-        let input = String::from("type,client,tx,amount\ndeposit,1,2,3\nwithdrawal,4,5,6\ndispute,7,8,\nresolve,9,10,\nchargeback,11,12,\n");
+        let input = concat!(
+            "type,client,tx,    amount\n",
+            "deposit,1,2,3.12345\n",
+            "withdrawal,4,5,6\n",
+            "dispute,7,8,\n",
+            "resolve,9,10,\n",
+            "chargeback,11,12,\n",
+        );
+
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter
             .collect::<Result<Vec<_>, _>>()
@@ -138,7 +143,7 @@ mod test {
                 Event::Deposit {
                     client_id: 1,
                     transaction_id: 2,
-                    amount: dec!(3),
+                    amount: dec!(3.12345),
                 },
                 Event::Withdrawal {
                     client_id: 4,
@@ -163,7 +168,12 @@ mod test {
 
     #[test]
     fn test_to_events_iter_malformed_row() {
-        let input = String::from("type,client,tx,amount\ndeposit,1,1,1\ninvalid\ndeposit,2,2,2");
+        let input = concat!(
+            "type,client,tx,    amount\n",
+            "deposit,1,1,1\n",
+            "invalid\n",
+            "deposit,2,2,2\n",
+        );
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(result.len(), 3);
@@ -199,7 +209,7 @@ mod test {
 
     #[test]
     fn test_to_events_iter_unknown_type() {
-        let input = String::from("type,client,tx,amount\nunknown,1,1,1\n");
+        let input = concat!("type,client,tx,    amount\n", "unknown,1,1,1\n",);
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(result.len(), 1);
@@ -213,7 +223,7 @@ mod test {
 
     #[test]
     fn test_to_events_iter_missing_amount() {
-        let input = String::from("type,client,tx,amount\ndeposit,1,1,\n");
+        let input = concat!("type,client,tx,    amount\n", "deposit,1,1,\n",);
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
         assert_eq!(result.len(), 1);
@@ -252,7 +262,11 @@ mod test {
         let output = String::from_utf8(writer).expect("Not UTF-8");
         assert_eq!(
             output,
-            "client,available,held,total,locked\n1,80,20,100,true\n2,1,6,7,false\n"
+            concat!(
+                "client,available,held,total,locked\n",
+                "1,80,20,100,true\n",
+                "2,1,6,7,false\n"
+            )
         );
     }
 }

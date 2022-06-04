@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 csv = "1.1"
 serde = { version = "1", features = ["derive"] }
-rust_decimal = {version = "1.24", features = ["serde-str"] }
+rust_decimal = {version = "1.24" }
 rust_decimal_macros = "1.24"
 
 [dev-dependencies]
