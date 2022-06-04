@@ -3,6 +3,8 @@ use super::Amount;
 // currently getting a false positive 'unused import' error here
 use rust_decimal_macros::dec;
 
+pub type ClientID = u16;
+
 // Represents the current state of a client account.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Client {
