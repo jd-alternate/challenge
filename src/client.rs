@@ -42,4 +42,10 @@ impl Client {
         // TODO: can you hold negative money?
         self.held += amount;
     }
+
+    pub fn chargeback(&mut self, amount: Amount) {
+        self.held -= amount;
+        self.total -= amount;
+        self.locked = true;
+    }
 }

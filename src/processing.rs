@@ -12,12 +12,18 @@ enum TransactionKind {
     Withdrawal { successful: bool },
 }
 
+enum DisputeStatus {
+    None, // if a dispute is resolves, we go back to this state
+    Pending,
+    ChargedBack,
+}
+
 // TODO: consider making fields readonly that shouldn't change
 struct Transaction {
     client_id: ClientID,
     amount: Amount,
-    under_dispute: bool,
     kind: TransactionKind,
+    dispute_status: DisputeStatus,
 }
 
 // TODO: note that it's unfortunate we've got CSV specific serde stuff here
@@ -82,22 +88,30 @@ impl Processor {
                 transaction_id,
                 client_id,
                 amount,
-            } => self.withdraw(transaction_id, client_id, amount)?,
+            } => self.withdraw(transaction_id, client_id, amount),
             Event::Dispute {
                 transaction_id,
                 client_id,
-            } => self.dispute(transaction_id, client_id)?,
+            } => self.dispute(transaction_id, client_id),
             Event::Resolve {
                 transaction_id,
                 client_id,
-            } => self.resolve(transaction_id, client_id)?,
-            _ => {}
+            } => self.resolve(transaction_id, client_id),
+            Event::Chargeback {
+                transaction_id,
+                client_id,
+            } => self.chargeback(transaction_id, client_id),
         }
-
-        Ok(())
     }
 
-    fn deposit(&mut self, transaction_id: TransactionID, client_id: ClientID, amount: Amount) {
+    fn deposit(
+        &mut self,
+        transaction_id: TransactionID,
+        client_id: ClientID,
+        amount: Amount,
+    ) -> Result<(), String> {
+        self.check_transaction_does_not_exist(transaction_id)?;
+
         let client = self.find_or_create_client(client_id);
         client.deposit(amount);
         self.create_transaction(
@@ -105,10 +119,26 @@ impl Processor {
             Transaction {
                 client_id,
                 amount,
-                under_dispute: false,
+                dispute_status: DisputeStatus::None,
                 kind: TransactionKind::Deposit,
             },
-        )
+        );
+
+        Ok(())
+    }
+
+    fn check_transaction_does_not_exist(
+        &self,
+        transaction_id: TransactionID,
+    ) -> Result<(), String> {
+        if self.transactions_by_id.contains_key(&transaction_id) {
+            return Err(format!(
+                "Transaction already exists with id {}.",
+                transaction_id,
+            ));
+        }
+
+        Ok(())
     }
 
     // Arguably, instead of storing the transaction as unsuccessful you could just
@@ -120,6 +150,8 @@ impl Processor {
         client_id: ClientID,
         amount: Amount,
     ) -> Result<(), String> {
+        self.check_transaction_does_not_exist(transaction_id)?;
+
         let client = self.find_or_create_client(client_id);
         let successful = client.withdraw(amount);
         self.create_transaction(
@@ -127,7 +159,7 @@ impl Processor {
             Transaction {
                 client_id,
                 amount,
-                under_dispute: false,
+                dispute_status: DisputeStatus::None,
                 kind: TransactionKind::Withdrawal { successful },
             },
         );
@@ -145,20 +177,22 @@ impl Processor {
         client_id: ClientID,
     ) -> Result<(), String> {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
+        Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if transaction.under_dispute {
-            return Err(format!(
-                "Transaction {} is already under dispute.",
-                transaction_id
-            ));
-        }
-
-        // assuming that a client can only dispute their own transactions
-        if client_id != transaction.client_id {
-            return Err(format!(
-                "Client id {} does not match transaction client id {}.",
-                client_id, transaction.client_id
-            ));
+        match transaction.dispute_status {
+            DisputeStatus::Pending => {
+                return Err(format!(
+                    "Transaction {} is already under dispute.",
+                    transaction_id
+                ));
+            }
+            DisputeStatus::ChargedBack => {
+                return Err(format!(
+                    "Transaction {} has already been charged back.",
+                    transaction_id
+                ));
+            }
+            DisputeStatus::None => {}
         }
 
         match transaction.kind {
@@ -177,7 +211,7 @@ impl Processor {
             }
         };
 
-        transaction.under_dispute = true;
+        transaction.dispute_status = DisputeStatus::Pending;
 
         Ok(())
     }
@@ -188,19 +222,12 @@ impl Processor {
         client_id: ClientID,
     ) -> Result<(), String> {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
+        Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !transaction.under_dispute {
+        if !matches!(transaction.dispute_status, DisputeStatus::Pending) {
             return Err(format!(
                 "Transaction {} is not under dispute.",
                 transaction_id
-            ));
-        }
-
-        // assuming that a client can only dispute their own transactions
-        if client_id != transaction.client_id {
-            return Err(format!(
-                "client id {} does not match transaction client id {}.",
-                client_id, transaction.client_id
             ));
         }
 
@@ -215,7 +242,52 @@ impl Processor {
             }
         };
 
-        transaction.under_dispute = false;
+        transaction.dispute_status = DisputeStatus::None;
+
+        Ok(())
+    }
+
+    fn chargeback(
+        &mut self,
+        transaction_id: TransactionID,
+        client_id: ClientID,
+    ) -> Result<(), String> {
+        let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
+        Self::check_client_owns_transaction(client_id, transaction)?;
+
+        if !matches!(transaction.dispute_status, DisputeStatus::Pending) {
+            return Err(format!(
+                "Transaction {} is not under dispute.",
+                transaction_id
+            ));
+        }
+
+        match transaction.kind {
+            TransactionKind::Deposit => {
+                client.chargeback(transaction.amount);
+            }
+            // ignoring whether withdrawal was successful given we can't dispute
+            // unsuccessful withdrawals in the first place
+            TransactionKind::Withdrawal { .. } => {
+                client.chargeback(-1 * transaction.amount);
+            }
+        };
+
+        transaction.dispute_status = DisputeStatus::ChargedBack;
+
+        Ok(())
+    }
+
+    fn check_client_owns_transaction(
+        client_id: ClientID,
+        transaction: &Transaction,
+    ) -> Result<(), String> {
+        if client_id != transaction.client_id {
+            return Err(format!(
+                "Client id {} does not match transaction client id {}.",
+                client_id, transaction.client_id
+            ));
+        }
 
         Ok(())
     }
@@ -227,12 +299,6 @@ impl Processor {
     }
 
     fn create_transaction(&mut self, transaction_id: TransactionID, transaction: Transaction) {
-        // if we already have a transaction with this ID, we will ignore the request
-        // TODO: consider error-ing
-        if self.transactions_by_id.contains_key(&transaction_id) {
-            return;
-        }
-
         self.transactions_by_id.insert(transaction_id, transaction);
     }
 
@@ -276,40 +342,46 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
 
+    // helper method for when we just want to provide an input and assert on the output
+    fn assert_results(
+        input_events: Vec<Result<Event, Box<dyn Error>>>,
+        expected_clients_by_id: HashMap<ClientID, Client>,
+        expected_errors: Vec<String>,
+    ) {
+        let result = process_events(input_events.into_iter())
+            .expect("Unexpectedly failed to process events.");
+
+        assert_eq!(result.0, expected_clients_by_id);
+        assert_eq!(result.1, expected_errors);
+    }
+
     #[test]
-    fn test_parse_empty() {
-        let input_events = vec![];
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-        assert_eq!(result.0, HashMap::new());
-        assert_eq!(result.1, Vec::<String>::new());
+    fn test_empty_input() {
+        assert_results(vec![], HashMap::new(), vec![]);
     }
 
     #[test]
     fn test_single_deposit() {
         let client_id = 1;
         let deposit_amount = 100;
-        let input_events = vec![Ok(Event::Deposit {
-            client_id: client_id,
-            transaction_id: 1,
-            amount: deposit_amount,
-        })];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![Ok(Event::Deposit {
+                client_id: client_id,
+                transaction_id: 1,
+                amount: deposit_amount,
+            })],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![],
         );
-
-        assert_eq!(result.1, Vec::<String>::new());
     }
 
     #[test]
@@ -317,71 +389,86 @@ mod test {
         let client_id = 1;
         let first_deposit_amount = 100;
         let second_deposit_amount = 200;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: 1,
-                amount: first_deposit_amount,
-            }),
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: 2,
-                amount: second_deposit_amount,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: 1,
+                    amount: first_deposit_amount,
+                }),
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: 2,
+                    amount: second_deposit_amount,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: first_deposit_amount + second_deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![],
         );
-
-        assert_eq!(result.1, Vec::<String>::new());
     }
 
     #[test]
-    fn test_unsuccessful_withdrawal() {
+    fn test_unsuccessful_deposit_due_to_existing_transaction() {
+        let client_id = 1;
+        let transaction_id = 1;
+        let first_deposit_amount = 10;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: transaction_id,
+                    amount: first_deposit_amount,
+                }),
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: transaction_id,
+                    amount: 20,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: first_deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction already exists with id 1.")],
+        );
+    }
+
+    #[test]
+    fn test_error_event() {
         let client_id = 1;
         let deposit_amount = 100;
-        let withdrawal_amount = 120;
         let input_events = vec![
             Ok(Event::Deposit {
                 client_id: client_id,
                 transaction_id: 1,
                 amount: deposit_amount,
             }),
-            Ok(Event::Withdrawal {
+            Err("Test".into()),
+            Ok(Event::Deposit {
                 client_id: client_id,
                 transaction_id: 2,
-                amount: withdrawal_amount,
+                amount: 10,
             }),
         ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
+        let result = process_events(input_events.into_iter());
 
-        assert_eq!(
-            result.0,
-            HashMap::from([(
-                client_id,
-                Client {
-                    id: client_id,
-                    held: 0,
-                    total: deposit_amount,
-                    locked: false
-                }
-            )])
-        );
-
-        assert_eq!(result.1, vec![String::from("Insufficient funds.")]);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -389,34 +476,94 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let withdrawal_amount = 20;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: 1,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Withdrawal {
-                client_id: client_id,
-                transaction_id: 2,
-                amount: withdrawal_amount,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: 1,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: 2,
+                    amount: withdrawal_amount,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount - withdrawal_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![],
         );
-        assert_eq!(result.1, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_unsuccessful_withdrawal_due_to_insufficient_funds() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let withdrawal_amount = 120;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: 1,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: 2,
+                    amount: withdrawal_amount,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Insufficient funds.")],
+        );
+    }
+
+    #[test]
+    fn test_unsuccessful_withdrawal_due_to_existing_transaction() {
+        let client_id = 1;
+        let deposit_amount = 100;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: 1,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: 1,
+                    amount: 100,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction already exists with id 1.")],
+        );
     }
 
     #[test]
@@ -424,33 +571,30 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![],
         );
-        assert_eq!(result.1, Vec::<String>::new());
     }
 
     #[test]
@@ -458,34 +602,30 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: 3,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: 3,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 3 not found.")],
         );
-
-        assert_eq!(result.1, vec![String::from("Transaction 3 not found.")]);
     }
 
     #[test]
@@ -493,35 +633,28 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: 3,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: 3,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
-        );
-
-        assert_eq!(
-            result.1,
+                    locked: false,
+                },
+            )]),
             vec![String::from(
                 "Client id 3 does not match transaction client id 1.",
             )],
@@ -533,40 +666,72 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
-        );
-
-        assert_eq!(
-            result.1,
+                    locked: false,
+                },
+            )]),
             vec![String::from("Transaction 2 is already under dispute.")],
+        );
+    }
+
+    #[test]
+    fn test_unsuccessful_disputed_deposit_due_to_already_charged_back() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: 0,
+                    locked: true,
+                },
+            )]),
+            vec![String::from("Transaction 2 has already been charged back.")],
         );
     }
 
@@ -575,122 +740,150 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            Vec::<String>::new(),
         );
-
-        assert_eq!(result.1, Vec::<String>::new());
     }
 
     #[test]
     fn test_unsuccessful_disputed_withdrawal_due_to_unsuccessful_withdrawal() {
         let client_id = 1;
         let withdrawal_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Withdrawal {
-                client_id: client_id,
-                transaction_id: withdrawal_transaction_id,
-                amount: 10,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: withdrawal_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                    amount: 10,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: 0,
-                    locked: false
-                }
-            )])
-        );
-
-        assert_eq!(
-            result.1,
+                    locked: false,
+                },
+            )]),
             vec![
                 String::from("Insufficient funds."),
                 String::from(
-                    "Original withdrawal (2) was not successful, so it cannot be disputed."
-                )
+                    "Original withdrawal (2) was not successful, so it cannot be disputed.",
+                ),
             ],
         );
     }
 
     #[test]
-    fn test_successful_resolved_dispute() {
+    fn test_successful_resolved_deposit_dispute() {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            Vec::<String>::new(),
         );
-        assert_eq!(result.1, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_successful_resolved_withdrawal_dispute() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+        let withdrawal_amount = 20;
+        let withdrawal_transaction_id = 3;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                    amount: withdrawal_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount - withdrawal_amount,
+                    locked: false,
+                },
+            )]),
+            Vec::<String>::new(),
+        );
     }
 
     #[test]
@@ -698,35 +891,29 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
-        );
-        assert_eq!(
-            result.1,
-            vec![String::from("Transaction 2 is not under dispute.")]
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 2 is not under dispute.")],
         );
     }
 
@@ -735,43 +922,37 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: 0,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
-        );
-        assert_eq!(
-            result.1,
-            vec![String::from("Transaction 2 is not under dispute.")]
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 2 is not under dispute.")],
         );
     }
 
@@ -780,36 +961,205 @@ mod test {
         let client_id = 1;
         let deposit_amount = 100;
         let deposit_transaction_id = 2;
-        let input_events = vec![
-            Ok(Event::Deposit {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-                amount: deposit_amount,
-            }),
-            Ok(Event::Dispute {
-                client_id: client_id,
-                transaction_id: deposit_transaction_id,
-            }),
-            Ok(Event::Resolve {
-                client_id: client_id,
-                transaction_id: 3,
-            }),
-        ];
 
-        let result = process_events(input_events.into_iter()).expect("failed to process events");
-
-        assert_eq!(
-            result.0,
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Resolve {
+                    client_id: client_id,
+                    transaction_id: 3,
+                }),
+            ],
             HashMap::from([(
                 client_id,
                 Client {
                     id: client_id,
                     held: deposit_amount,
                     total: deposit_amount,
-                    locked: false
-                }
-            )])
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 3 not found.")],
         );
-        assert_eq!(result.1, vec![String::from("Transaction 3 not found.")]);
+    }
+
+    #[test]
+    fn test_successful_deposit_chargeback() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: 0,
+                    locked: true,
+                },
+            )]),
+            Vec::<String>::new(),
+        );
+    }
+
+    #[test]
+    fn test_successful_withdrawal_chargeback() {
+        let client_id = 1;
+        let deposit_transaction_id = 1;
+        let deposit_amount = 100;
+        let withdrawal_amount = 20;
+        let withdrawal_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                    amount: withdrawal_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: 100,
+                    locked: true,
+                },
+            )]),
+            Vec::<String>::new(),
+        );
+    }
+
+    #[test]
+    fn test_unsuccessful_chargeback_due_to_not_disputed() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 2 is not under dispute.")],
+        );
+    }
+
+    #[test]
+    fn test_unsuccessful_chargeback_due_to_not_found_transaction() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: client_id,
+                    transaction_id: 3,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from("Transaction 3 not found.")],
+        );
+    }
+
+    #[test]
+    fn test_unsuccessful_chargeback_due_to_mismatched_client() {
+        let client_id = 1;
+        let deposit_amount = 100;
+        let deposit_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id: client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Chargeback {
+                    client_id: 3,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
+            HashMap::from([(
+                client_id,
+                Client {
+                    id: client_id,
+                    held: 0,
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![String::from(
+                "Client id 3 does not match transaction client id 1.",
+            )],
+        );
     }
 }
