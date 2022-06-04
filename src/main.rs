@@ -31,9 +31,7 @@ fn run(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Err
 fn get_file() -> Result<File, Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        // TODO: return actual error
-        eprintln!("Expected exactly one argument containing the path to a CSV input file");
-        std::process::exit(1);
+        return Err(format!("Usage: {} <filename>", args[0]).into());
     }
     let path = &args[1];
     let file = File::open(&path)?;
