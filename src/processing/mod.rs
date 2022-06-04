@@ -37,8 +37,6 @@ mod test {
         expected_errors: Vec<String>,
     ) {
         let mut error_logger = Vec::new();
-        // need to convert my error logger to a vector of strings by splitting on
-        // newlines
 
         let result = process_events(input_events.into_iter(), &mut error_logger)
             .expect("Unexpectedly failed to process events.");
