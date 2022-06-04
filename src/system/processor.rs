@@ -20,6 +20,8 @@ impl Processor {
         }
     }
 
+    // Expected to be called once all the events have been processed, hence taking
+    // ownership of `self`.
     pub fn clients_by_id(self) -> HashMap<ClientID, Client> {
         self.clients_by_id
     }
