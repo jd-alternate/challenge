@@ -1,15 +1,9 @@
-// Everything CSV-related lives here.
-
 use core::str::FromStr;
 
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    error::Error,
-    io::{Read, Write},
-};
+use serde::Deserialize;
+use std::{error::Error, io::Read};
 
-use crate::model::{Amount, Client, ClientID, Event, TransactionID};
+use crate::model::{Amount, ClientID, Event, TransactionID};
 
 #[derive(Deserialize)]
 // intermediary struct for deserializing CSV
@@ -25,15 +19,6 @@ pub struct CsvEvent {
     // I'm just having serde treat this as a string and then I'm manually mapping to a decimal
     // afterwards.
     amount: String,
-}
-
-#[derive(Serialize)]
-struct CsvClient {
-    client: ClientID,
-    available: Amount,
-    held: Amount,
-    total: Amount,
-    locked: bool,
 }
 
 // Returns an iterator which itself yields Events. It takes a reader that
@@ -82,45 +67,6 @@ fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
     }
 
     Ok(Amount::from_str(amount)?)
-}
-
-// Takes the resultant clients after processing events, and writes them to the
-// given writer in CSV form.
-pub fn write_report(
-    final_state: HashMap<ClientID, Client>,
-    writer: impl Write,
-) -> Result<(), Box<dyn Error>> {
-    let mut entries: Vec<(ClientID, Client)> = final_state.into_iter().collect();
-    // This sorting is admittedly mostly for the sake of making testing easier,
-    // though I assume that actually producing a report is a small part that happens
-    // at the end of a long process of processing events, and I also assume that
-    // it's convenient to order records by client ID despite the spec being
-    // indifferent. If this assumption proves invalid we can ditch the sorting
-    // and just update the test.
-    entries.sort_by(|(a, _), (b, _)| a.cmp(b));
-    let csv_clients = entries
-        .into_iter()
-        .map(|(client_id, client)| csv_client_from_client(client_id, client));
-
-    let mut wtr = csv::Writer::from_writer(writer);
-
-    for client in csv_clients {
-        wtr.serialize(client)?;
-    }
-
-    wtr.flush()?;
-
-    Ok(())
-}
-
-fn csv_client_from_client(client_id: ClientID, client: Client) -> CsvClient {
-    CsvClient {
-        client: client_id,
-        available: client.available(),
-        held: client.held(),
-        total: client.total(),
-        locked: client.locked(),
-    }
 }
 
 #[cfg(test)]
@@ -248,26 +194,5 @@ mod test {
             Some(Ok(_)) => panic!("Expected failed event parse"),
             None => panic!("Expected Some"),
         };
-    }
-
-    #[test]
-    fn test_write_reports() {
-        let mut writer = Vec::new();
-        let result = HashMap::from([
-            (1, Client::from(dec!(20), dec!(100), true)),
-            (2, Client::from(dec!(6), dec!(7), false)),
-        ]);
-
-        write_report(result, &mut writer).expect("Expected no errors.");
-
-        let output = String::from_utf8(writer).expect("Not UTF-8");
-        assert_eq!(
-            concat!(
-                "client,available,held,total,locked\n",
-                "1,80,20,100,true\n",
-                "2,1,6,7,false\n"
-            ),
-            output,
-        );
     }
 }
