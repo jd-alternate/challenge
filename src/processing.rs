@@ -1008,4 +1008,67 @@ mod test {
             )],
         );
     }
+
+    #[test]
+    fn test_disputed_deposit_after_equivalent_withdrawal() {
+        let client_id = 1;
+        let deposit_amount = dec!(100);
+        let deposit_transaction_id = 1;
+        let withdrawal_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id,
+                    transaction_id: withdrawal_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id,
+                    transaction_id: deposit_transaction_id,
+                }),
+            ],
+            HashMap::from([(client_id, Client::from(deposit_amount, dec!(0), false))]),
+            vec![],
+        );
+    }
+
+    #[test]
+    // This is a weird one. I don't think this should be the logic but I'm capturing it anyway:
+    // If a client deposits $100 and then immediately withdraws it and _then_ disputes
+    // the withdrawal, they end up with a total of zero and a held amount of -$100.
+    // This means they have 0 - -100 == $100 in available funds.
+    // TODO: work out what should actually happen here.
+    fn test_disputed_withdrawal_after_equivalent_deposit() {
+        let client_id = 1;
+        let deposit_amount = dec!(100);
+        let deposit_transaction_id = 1;
+        let withdrawal_transaction_id = 2;
+
+        assert_results(
+            vec![
+                Ok(Event::Deposit {
+                    client_id,
+                    transaction_id: deposit_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Withdrawal {
+                    client_id,
+                    transaction_id: withdrawal_transaction_id,
+                    amount: deposit_amount,
+                }),
+                Ok(Event::Dispute {
+                    client_id,
+                    transaction_id: withdrawal_transaction_id,
+                }),
+            ],
+            HashMap::from([(client_id, Client::from(-deposit_amount, dec!(0), false))]),
+            vec![],
+        );
+    }
 }

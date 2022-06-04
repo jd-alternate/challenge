@@ -1,6 +1,6 @@
 use rust_decimal::prelude::Decimal;
 
-// TODO: is this too little for one file?
+// Defining these type aliases so that we can easily update them if needed.
 
 pub type Amount = Decimal;
 
