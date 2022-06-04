@@ -2,21 +2,28 @@
 use std::env;
 use std::error::Error;
 use std::fs::File;
-use std::io;
-// TODO: think of better name
+use std::io::{self, Read, Write};
 mod client;
 mod parsing;
 mod processing;
 mod types;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut file = get_file()?;
+    let file = get_file()?;
+    let mut input = io::BufReader::new(file);
 
-    // TODO: consider buffered reader
-    let events_iter = parsing::csv::csv_iterator(&mut file);
-    let result = processing::process_events(events_iter)?;
-    // TODO: don't use tuple for result type
-    parsing::csv::write_result(result.0, io::stdout())?;
+    run(&mut input, &mut io::stdout())
+}
+
+fn run(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+    let events_iter = parsing::csv::to_events_iter(input);
+
+    // we're logging errors for the sake of easier testing and debugging, but
+    // we're not logging here just because it wasn't in the spec.
+    // io::sink could easily be swapped out for io::stderr.
+    let final_state = processing::process_events(events_iter, &mut io::sink())?;
+
+    parsing::csv::write_result(final_state, output)?;
 
     Ok(())
 }

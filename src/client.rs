@@ -1,5 +1,6 @@
 use crate::types::Amount;
 
+// Represents the current state of a client account.
 #[derive(Debug, PartialEq)]
 pub struct Client {
     pub held: Amount,
@@ -16,7 +17,6 @@ impl Client {
         }
     }
 
-    // TODO: consider having available actually stored so we don't need to do the calculation every time
     pub fn available(&self) -> Amount {
         self.total - self.held
     }

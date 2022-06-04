@@ -1,13 +1,56 @@
 use crate::client::Client;
 use crate::types::Amount;
 use crate::types::ClientID;
-use serde::Deserialize;
+use crate::types::TransactionID;
 use std::collections::HashMap;
 use std::error::Error;
+use std::io::Write;
 
-type TransactionID = u32;
+// A quick overview of the modelling here: we have a sequence of Events we need to
+// process. Some events (deposits and withdrawals) create transactions, and other
+// events (disputes/resolves/chargebacks) act on transactions. Any event can
+// update the state of a client.
+
+// Represents events in our system. These do not represent successfully processed events,
+// but rather the events that need to be processed.
+#[derive(Debug, PartialEq, Clone)]
+pub enum Event {
+    Deposit {
+        transaction_id: TransactionID,
+        client_id: ClientID,
+        amount: Amount,
+    },
+    Withdrawal {
+        transaction_id: TransactionID,
+        client_id: ClientID,
+        amount: Amount,
+    },
+    Dispute {
+        transaction_id: TransactionID,
+        client_id: ClientID,
+    },
+    Resolve {
+        transaction_id: TransactionID,
+        client_id: ClientID,
+    },
+    Chargeback {
+        transaction_id: TransactionID,
+        client_id: ClientID,
+    },
+}
+
+// Represents a transfer of money (either deposit or withdrawal). This does _not_
+// represent disputes/resolutions: those are represented by events and act on transactions.
+struct Transaction {
+    client_id: ClientID,
+    amount: Amount,
+    kind: TransactionKind,
+    dispute_status: DisputeStatus,
+}
 
 enum TransactionKind {
+    // although theoretically a deposit can be unsuccessful, it's not possible
+    // with this implementation so we're omitting that field here
     Deposit,
     Withdrawal { successful: bool },
 }
@@ -18,52 +61,8 @@ enum DisputeStatus {
     ChargedBack,
 }
 
-// TODO: consider making fields readonly that shouldn't change
-struct Transaction {
-    client_id: ClientID,
-    amount: Amount,
-    kind: TransactionKind,
-    dispute_status: DisputeStatus,
-}
-
-// TODO: note that it's unfortunate we've got CSV specific serde stuff here
-#[derive(Debug, Deserialize)]
-#[serde(tag = "type")]
-pub enum Event {
-    Deposit {
-        #[serde(rename = "tx")]
-        transaction_id: TransactionID,
-        #[serde(rename = "client")]
-        client_id: ClientID,
-        amount: Amount,
-    },
-    Withdrawal {
-        #[serde(rename = "tx")]
-        transaction_id: TransactionID,
-        #[serde(rename = "client")]
-        client_id: ClientID,
-        amount: Amount,
-    },
-    Dispute {
-        #[serde(rename = "tx")]
-        transaction_id: TransactionID,
-        #[serde(rename = "client")]
-        client_id: ClientID,
-    },
-    Resolve {
-        #[serde(rename = "tx")]
-        transaction_id: TransactionID,
-        #[serde(rename = "client")]
-        client_id: ClientID,
-    },
-    Chargeback {
-        #[serde(rename = "tx")]
-        transaction_id: TransactionID,
-        #[serde(rename = "client")]
-        client_id: ClientID,
-    },
-}
-
+// This maintains the state of the system (clients and transactions) and processes
+// new events.
 struct Processor {
     clients_by_id: HashMap<ClientID, Client>,
     transactions_by_id: HashMap<TransactionID, Transaction>,
@@ -123,20 +122,6 @@ impl Processor {
                 kind: TransactionKind::Deposit,
             },
         );
-
-        Ok(())
-    }
-
-    fn check_transaction_does_not_exist(
-        &self,
-        transaction_id: TransactionID,
-    ) -> Result<(), String> {
-        if self.transactions_by_id.contains_key(&transaction_id) {
-            return Err(format!(
-                "Transaction already exists with id {}.",
-                transaction_id,
-            ));
-        }
 
         Ok(())
     }
@@ -292,6 +277,20 @@ impl Processor {
         Ok(())
     }
 
+    fn check_transaction_does_not_exist(
+        &self,
+        transaction_id: TransactionID,
+    ) -> Result<(), String> {
+        if self.transactions_by_id.contains_key(&transaction_id) {
+            return Err(format!(
+                "Transaction already exists with id {}.",
+                transaction_id,
+            ));
+        }
+
+        Ok(())
+    }
+
     fn find_or_create_client(&mut self, client_id: ClientID) -> &mut Client {
         self.clients_by_id
             .entry(client_id)
@@ -320,25 +319,27 @@ impl Processor {
     }
 }
 
+// Takes an events iterator and processes each event. Returns the final state
+// of the clients.
 pub fn process_events(
-    events: impl Iterator<Item = Result<Event, Box<dyn Error>>>,
-) -> Result<(HashMap<ClientID, Client>, Vec<String>), Box<dyn Error>> {
+    events_iter: impl Iterator<Item = Result<Event, Box<dyn Error>>>,
+    error_logger: &mut impl Write,
+) -> Result<HashMap<ClientID, Client>, Box<dyn Error>> {
     let mut processor = Processor::new();
-    let mut errors = vec![];
 
-    for result in events {
-        let event = result?;
-        let result = processor.process_event(event);
-        if let Err(e) = result {
-            errors.push(e)
+    for event in events_iter {
+        if let Err(e) = processor.process_event(event?) {
+            error_logger.write(format!("{}\n", e).as_bytes())?;
         }
     }
 
-    Ok((processor.clients_by_id, errors))
+    Ok(processor.clients_by_id)
 }
 
 #[cfg(test)]
 mod test {
+    use std::io;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -348,11 +349,17 @@ mod test {
         expected_clients_by_id: HashMap<ClientID, Client>,
         expected_errors: Vec<String>,
     ) {
-        let result = process_events(input_events.into_iter())
+        let mut error_logger = Vec::new();
+        // need to convert my error logger to a vector of strings by splitting on newlines
+
+        let result = process_events(input_events.into_iter(), &mut error_logger)
             .expect("Unexpectedly failed to process events.");
 
-        assert_eq!(result.0, expected_clients_by_id);
-        assert_eq!(result.1, expected_errors);
+        let error_str = String::from_utf8(error_logger).expect("Not UTF-8");
+        let errors = error_str.lines().collect::<Vec<_>>();
+
+        assert_eq!(result, expected_clients_by_id);
+        assert_eq!(errors, expected_errors);
     }
 
     #[test]
@@ -463,7 +470,7 @@ mod test {
             }),
         ];
 
-        let result = process_events(input_events.into_iter());
+        let result = process_events(input_events.into_iter(), &mut io::sink());
 
         assert!(result.is_err());
     }
