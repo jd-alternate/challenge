@@ -138,7 +138,6 @@ mod test {
             .expect("Expected no errors.");
 
         assert_eq!(
-            result,
             vec![
                 Event::Deposit {
                     client_id: 1,
@@ -162,7 +161,8 @@ mod test {
                     client_id: 11,
                     transaction_id: 12,
                 }
-            ]
+            ],
+            result,
         );
     }
 
@@ -176,16 +176,16 @@ mod test {
         );
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
-        assert_eq!(result.len(), 3);
+        assert_eq!(3, result.len());
 
         match result.get(0) {
             Some(Ok(event)) => assert_eq!(
-                *event,
                 Event::Deposit {
                     client_id: 1,
                     transaction_id: 1,
                     amount: dec!(1),
-                }
+                },
+                *event,
             ),
             Some(Err(err)) => panic!("Unexpected error: {}", err),
             None => panic!("Expected Some"),
@@ -195,12 +195,12 @@ mod test {
 
         match result.get(2) {
             Some(Ok(event)) => assert_eq!(
-                *event,
                 Event::Deposit {
                     client_id: 2,
                     transaction_id: 2,
                     amount: dec!(2),
-                }
+                },
+                *event,
             ),
             Some(Err(err)) => panic!("Unexpected error: {}", err),
             None => panic!("Expected Some"),
@@ -212,10 +212,10 @@ mod test {
         let input = concat!("type,client,tx,    amount\n", "unknown,1,1,1\n",);
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
-        assert_eq!(result.len(), 1);
+        assert_eq!(1, result.len());
 
         match result.first() {
-            Some(Err(err)) => assert_eq!(err.to_string(), "Unknown event kind: unknown."),
+            Some(Err(err)) => assert_eq!("Unknown event kind: unknown.", err.to_string()),
             Some(Ok(_)) => panic!("Expected failed event parse"),
             None => panic!("Expected Some"),
         };
@@ -226,10 +226,10 @@ mod test {
         let input = concat!("type,client,tx,    amount\n", "deposit,1,1,\n",);
         let events_iter = to_events_iter(input.as_bytes());
         let result = events_iter.collect::<Vec<_>>();
-        assert_eq!(result.len(), 1);
+        assert_eq!(1, result.len());
 
         match result.first() {
-            Some(Err(err)) => assert_eq!(err.to_string(), "Missing amount."),
+            Some(Err(err)) => assert_eq!("Missing amount.", err.to_string()),
             Some(Ok(_)) => panic!("Expected failed event parse"),
             None => panic!("Expected Some"),
         };
@@ -247,12 +247,12 @@ mod test {
 
         let output = String::from_utf8(writer).expect("Not UTF-8");
         assert_eq!(
-            output,
             concat!(
                 "client,available,held,total,locked\n",
                 "1,80,20,100,true\n",
                 "2,1,6,7,false\n"
-            )
+            ),
+            output,
         );
     }
 }

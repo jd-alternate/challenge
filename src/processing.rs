@@ -342,8 +342,8 @@ mod test {
         let error_str = String::from_utf8(error_logger).expect("Not UTF-8");
         let errors = error_str.lines().collect::<Vec<_>>();
 
-        assert_eq!(result, expected_clients_by_id);
-        assert_eq!(errors, expected_errors);
+        assert_eq!(expected_clients_by_id, result);
+        assert_eq!(expected_errors, errors);
     }
 
     #[test]

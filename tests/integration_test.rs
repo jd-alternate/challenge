@@ -30,10 +30,10 @@ fn test_successful_run() {
         .output()
         .expect("Expected no errors");
 
-    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(Some(0), output.status.code());
 
     let output_str = String::from_utf8(output.stdout).expect("Not UTF-8");
-    assert_eq!(output_str, expected_output);
+    assert_eq!(expected_output, output_str);
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn test_invalid_args() {
     let mut cmd = Command::cargo_bin("challenge").unwrap();
     let output = cmd.output().expect("Expected no errors");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(Some(1), output.status.code());
 
     let output_str = String::from_utf8(output.stderr).expect("Not UTF-8");
     assert!(
@@ -59,7 +59,7 @@ fn test_file_not_found() {
         .output()
         .expect("Expected no errors");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(Some(1), output.status.code());
 
     let output_str = String::from_utf8(output.stderr).expect("Not UTF-8");
     assert!(
@@ -87,8 +87,8 @@ fn test_malformed_csv() {
         .output()
         .expect("Expected no errors");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(Some(1), output.status.code());
 
     let output_str = String::from_utf8(output.stderr).expect("Not UTF-8");
-    assert_eq!(output_str, "Error: \"CSV error: record 1 (line: 2, byte: 26): found record with 5 fields, but the previous record has 4 fields\"\n");
+    assert_eq!("Error: \"CSV error: record 1 (line: 2, byte: 26): found record with 5 fields, but the previous record has 4 fields\"\n",output_str);
 }

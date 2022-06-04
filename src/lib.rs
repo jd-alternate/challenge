@@ -66,6 +66,6 @@ mod test {
 
         let output_str = String::from_utf8(output).expect("Not UTF-8");
 
-        assert_eq!(output_str, expected_output);
+        assert_eq!(expected_output, output_str);
     }
 }
