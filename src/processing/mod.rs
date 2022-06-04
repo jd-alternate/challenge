@@ -19,7 +19,7 @@ pub fn process_events(
         }
     }
 
-    Ok(processor.clients_by_id)
+    Ok(processor.clients_by_id())
 }
 
 #[cfg(test)]

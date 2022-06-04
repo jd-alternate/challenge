@@ -8,8 +8,8 @@ use std::collections::HashMap;
 // processes new events. We're not testing it directly because it's an
 // implementation detail.
 pub struct Processor {
-    pub clients_by_id: HashMap<ClientID, Client>,
-    pub transactions_by_id: HashMap<TransactionID, Transaction>,
+    clients_by_id: HashMap<ClientID, Client>,
+    transactions_by_id: HashMap<TransactionID, Transaction>,
 }
 
 impl Processor {
@@ -18,6 +18,10 @@ impl Processor {
             clients_by_id: HashMap::new(),
             transactions_by_id: HashMap::new(),
         }
+    }
+
+    pub fn clients_by_id(self) -> HashMap<ClientID, Client> {
+        self.clients_by_id
     }
 
     pub fn process_event(&mut self, event: Event) -> Result<(), String> {
