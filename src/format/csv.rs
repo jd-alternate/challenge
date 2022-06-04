@@ -28,7 +28,9 @@ pub struct CsvEvent {
 // Returns an iterator which itself yields Events. It takes a reader that
 // wraps a CSV file.
 pub fn to_events_iter(reader: impl Read) -> impl Iterator<Item = Result<Event, Box<dyn Error>>> {
-    csv::Reader::from_reader(reader)
+    csv::ReaderBuilder::new()
+        .trim(csv::Trim::All)
+        .from_reader(reader)
         .into_deserialize()
         .map(|result| parse_csv_event(result?))
 }
@@ -72,8 +74,8 @@ pub fn write_result(
     // This sorting is admittedly mostly for the sake of making testing easier,
     // though I assume that actually producing a report is a small part that happens
     // at the end of a long process of processing events, and I also assume that
-    // it's convenient to order records by client ID. If this assumption proves
-    // invalid we can ditch the sorting and just update the test.
+    // it's convenient to order records by client ID despite the spec being indifferent.
+    // If this assumption proves invalid we can ditch the sorting and just update the test.
     entries.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (client_id, client) in entries {
         writer.write_all(to_csv_row(client_id, &client).as_bytes())?;
@@ -82,7 +84,6 @@ pub fn write_result(
     Ok(())
 }
 
-// TODO: should this instead return direct bytes?
 fn to_csv_row(client_id: ClientID, client: &Client) -> String {
     format!(
         "{},{},{},{},{}\n",

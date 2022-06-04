@@ -1,4 +1,3 @@
-// TODO: use clippy and auto-merge
 use std::{
     env,
     error::Error,
@@ -10,14 +9,14 @@ mod format;
 mod processing;
 mod types;
 
-fn main() -> Result<(), Box<dyn Error>> {
+pub fn main() -> Result<(), Box<dyn Error>> {
     let file = get_file()?;
     let mut input = io::BufReader::new(file);
 
-    run(&mut input, &mut io::stdout())
+    run_aux(&mut input, &mut io::stdout())
 }
 
-fn run(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::to_events_iter(input);
 
     // we're logging errors for the sake of easier testing and debugging, but
@@ -39,4 +38,34 @@ fn get_file() -> Result<File, Box<dyn Error>> {
     let path = &args[1];
     let file = File::open(&path)?;
     Ok(file)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_run_aux() {
+        let input = concat!(
+            "type,client,tx,    amount\n",
+            "deposit,1, 1, 1\n",
+            "deposit,2,2,2\n",
+            "deposit,1,3,   2\n",
+            "withdrawal,1,4     ,1   \n",
+            "withdrawal,2,5,3\n",
+        );
+        let expected_output = concat!(
+            "client,available,held,total,locked\n",
+            "1,2,0,2,false\n",
+            "2,2,0,2,false\n"
+        );
+
+        let mut output = Vec::new();
+        run_aux(&mut input.as_bytes(), &mut output).expect("Unexpected error");
+
+        let output_str = String::from_utf8(output).expect("Not UTF-8");
+
+        assert_eq!(output_str, expected_output);
+    }
 }

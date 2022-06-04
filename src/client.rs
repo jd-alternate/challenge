@@ -2,9 +2,11 @@ use crate::types::Amount;
 
 // Represents the current state of a client account.
 #[derive(Debug, PartialEq, Eq)]
+// TODO: privatise fields
 pub struct Client {
     pub held: Amount,
     pub total: Amount,
+    // TODO: decide what to do if a client is locked
     pub locked: bool,
 }
 
