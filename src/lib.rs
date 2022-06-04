@@ -49,16 +49,16 @@ mod test {
     fn test_run_aux() {
         let input = concat!(
             "type,client,tx,    amount\n",
-            "deposit,1, 1, 1\n",
-            "deposit,2,2,2\n",
-            "deposit,1,3,   2\n",
-            "withdrawal,1,4     ,1   \n",
-            "withdrawal,2,5,3\n",
+            "deposit,1, 1, 1.11111\n",
+            "deposit,2,2,2.0\n",
+            "deposit,1,3,   2.0\n",
+            "withdrawal,1,4     ,1.5   \n",
+            "withdrawal,2,5,3.0\n",
         );
         let expected_output = concat!(
             "client,available,held,total,locked\n",
-            "1,2,0,2,false\n",
-            "2,2,0,2,false\n"
+            "1,1.61111,0,1.61111,false\n",
+            "2,2.0,0,2.0,false\n"
         );
 
         let mut output = Vec::new();

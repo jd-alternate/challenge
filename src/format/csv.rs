@@ -1,5 +1,10 @@
 // Everything CSV-related lives here.
 
+use core::str::FromStr;
+
+// currently getting a false positive 'unused import' error here
+use rust_decimal_macros::dec;
+
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -22,7 +27,10 @@ pub struct CsvEvent {
     transaction_id: TransactionID,
     #[serde(rename = "client")]
     client_id: ClientID,
-    amount: Option<Amount>,
+    // could use a custom deserializer that works with the rust decimal library's serde deserializer,
+    // but it's pretty hairy to have that gracefully deal with empty strings, so I'm just
+    // having serde treat this as a string and then I'm manually mapping to a decimal afterwards.
+    amount: String,
 }
 
 // Returns an iterator which itself yields Events. It takes a reader that
@@ -40,12 +48,12 @@ fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
         "deposit" => Ok(Event::Deposit {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
-            amount: csv_event.amount.ok_or("Missing amount.")?,
+            amount: parse_amount(&csv_event.amount)?,
         }),
         "withdrawal" => Ok(Event::Withdrawal {
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
-            amount: csv_event.amount.ok_or("Missing amount.")?,
+            amount: parse_amount(&csv_event.amount)?,
         }),
         "dispute" => Ok(Event::Dispute {
             transaction_id: csv_event.transaction_id,
@@ -61,6 +69,14 @@ fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
         }),
         _ => Err(format!("Unknown event kind: {}.", csv_event.kind).into()),
     }
+}
+
+fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
+    if amount == "" {
+        return Err("Missing amount.".into());
+    }
+
+    Ok(Amount::from_str(amount)?)
 }
 
 // Takes the resultant clients after processing events, and writes them to the
@@ -122,12 +138,12 @@ mod test {
                 Event::Deposit {
                     client_id: 1,
                     transaction_id: 2,
-                    amount: 3,
+                    amount: dec!(3),
                 },
                 Event::Withdrawal {
                     client_id: 4,
                     transaction_id: 5,
-                    amount: 6,
+                    amount: dec!(6),
                 },
                 Event::Dispute {
                     client_id: 7,
@@ -158,7 +174,7 @@ mod test {
                 Event::Deposit {
                     client_id: 1,
                     transaction_id: 1,
-                    amount: 1,
+                    amount: dec!(1),
                 }
             ),
             Some(Err(err)) => panic!("Unexpected error: {}", err),
@@ -173,7 +189,7 @@ mod test {
                 Event::Deposit {
                     client_id: 2,
                     transaction_id: 2,
-                    amount: 2,
+                    amount: dec!(2),
                 }
             ),
             Some(Err(err)) => panic!("Unexpected error: {}", err),
@@ -216,16 +232,16 @@ mod test {
             (
                 1,
                 Client {
-                    held: 20,
-                    total: 100,
+                    held: dec!(20),
+                    total: dec!(100),
                     locked: true,
                 },
             ),
             (
                 2,
                 Client {
-                    held: 6,
-                    total: 7,
+                    held: dec!(6),
+                    total: dec!(7),
                     locked: false,
                 },
             ),

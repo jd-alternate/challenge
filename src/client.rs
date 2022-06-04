@@ -1,5 +1,8 @@
 use crate::types::Amount;
 
+// currently getting a false positive 'unused import' error here
+use rust_decimal_macros::dec;
+
 // Represents the current state of a client account.
 #[derive(Debug, PartialEq, Eq)]
 // TODO: privatise fields
@@ -13,8 +16,8 @@ pub struct Client {
 impl Client {
     pub fn new() -> Self {
         Self {
-            held: 0,
-            total: 0,
+            held: dec!(0),
+            total: dec!(0),
             locked: false,
         }
     }

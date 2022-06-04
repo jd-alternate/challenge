@@ -2,6 +2,10 @@ use crate::{
     client::Client,
     types::{Amount, ClientID, TransactionID},
 };
+
+// currently getting a false positive 'unused import' error here
+use rust_decimal_macros::dec;
+
 use std::{collections::HashMap, error::Error, io::Write};
 
 // A quick overview of the modelling here: we have a sequence of Events we need to
@@ -368,7 +372,7 @@ mod test {
     #[test]
     fn test_single_deposit() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
 
         assert_results(
             vec![Ok(Event::Deposit {
@@ -379,7 +383,30 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
+                    total: deposit_amount,
+                    locked: false,
+                },
+            )]),
+            vec![],
+        );
+    }
+
+    #[test]
+    fn test_single_deposit_accurate() {
+        let client_id = 1;
+        let deposit_amount = dec!(100.12345);
+
+        assert_results(
+            vec![Ok(Event::Deposit {
+                client_id,
+                transaction_id: 1,
+                amount: deposit_amount,
+            })],
+            HashMap::from([(
+                client_id,
+                Client {
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -391,8 +418,8 @@ mod test {
     #[test]
     fn test_two_deposits() {
         let client_id = 1;
-        let first_deposit_amount = 100;
-        let second_deposit_amount = 200;
+        let first_deposit_amount = dec!(100);
+        let second_deposit_amount = dec!(200);
 
         assert_results(
             vec![
@@ -410,7 +437,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: first_deposit_amount + second_deposit_amount,
                     locked: false,
                 },
@@ -423,7 +450,7 @@ mod test {
     fn test_unsuccessful_deposit_due_to_existing_transaction() {
         let client_id = 1;
         let transaction_id = 1;
-        let first_deposit_amount = 10;
+        let first_deposit_amount = dec!(10);
 
         assert_results(
             vec![
@@ -435,13 +462,13 @@ mod test {
                 Ok(Event::Deposit {
                     client_id,
                     transaction_id,
-                    amount: 20,
+                    amount: dec!(20),
                 }),
             ],
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: first_deposit_amount,
                     locked: false,
                 },
@@ -453,7 +480,7 @@ mod test {
     #[test]
     fn test_error_event() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let input_events = vec![
             Ok(Event::Deposit {
                 client_id,
@@ -464,7 +491,7 @@ mod test {
             Ok(Event::Deposit {
                 client_id,
                 transaction_id: 2,
-                amount: 10,
+                amount: dec!(10),
             }),
         ];
 
@@ -476,8 +503,8 @@ mod test {
     #[test]
     fn test_successful_withdrawal() {
         let client_id = 1;
-        let deposit_amount = 100;
-        let withdrawal_amount = 20;
+        let deposit_amount = dec!(100);
+        let withdrawal_amount = dec!(20);
 
         assert_results(
             vec![
@@ -495,7 +522,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount - withdrawal_amount,
                     locked: false,
                 },
@@ -507,8 +534,8 @@ mod test {
     #[test]
     fn test_unsuccessful_withdrawal_due_to_insufficient_funds() {
         let client_id = 1;
-        let deposit_amount = 100;
-        let withdrawal_amount = 120;
+        let deposit_amount = dec!(100);
+        let withdrawal_amount = dec!(120);
 
         assert_results(
             vec![
@@ -526,7 +553,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -538,7 +565,7 @@ mod test {
     #[test]
     fn test_unsuccessful_withdrawal_due_to_existing_transaction() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
 
         assert_results(
             vec![
@@ -550,13 +577,13 @@ mod test {
                 Ok(Event::Withdrawal {
                     client_id,
                     transaction_id: 1,
-                    amount: 100,
+                    amount: dec!(100),
                 }),
             ],
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -568,7 +595,7 @@ mod test {
     #[test]
     fn test_successful_disputed_deposit() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -598,7 +625,7 @@ mod test {
     #[test]
     fn test_unsuccessful_disputed_deposit_due_to_not_found_transaction() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -616,7 +643,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -628,7 +655,7 @@ mod test {
     #[test]
     fn test_unsuccessful_disputed_deposit_due_to_mismatched_client() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -646,7 +673,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -660,7 +687,7 @@ mod test {
     #[test]
     fn test_unsuccessful_disputed_deposit_due_to_already_disputed() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -694,7 +721,7 @@ mod test {
     #[test]
     fn test_unsuccessful_disputed_deposit_due_to_already_charged_back() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -720,8 +747,8 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
-                    total: 0,
+                    held: dec!(0),
+                    total: dec!(0),
                     locked: true,
                 },
             )]),
@@ -732,7 +759,7 @@ mod test {
     #[test]
     fn test_successful_disputed_deposit_after_resolved() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -777,7 +804,7 @@ mod test {
                 Ok(Event::Withdrawal {
                     client_id,
                     transaction_id: withdrawal_transaction_id,
-                    amount: 10,
+                    amount: dec!(10),
                 }),
                 Ok(Event::Dispute {
                     client_id,
@@ -787,8 +814,8 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
-                    total: 0,
+                    held: dec!(0),
+                    total: dec!(0),
                     locked: false,
                 },
             )]),
@@ -804,7 +831,7 @@ mod test {
     #[test]
     fn test_successful_resolved_deposit_dispute() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -826,7 +853,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -838,9 +865,9 @@ mod test {
     #[test]
     fn test_successful_resolved_withdrawal_dispute() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
-        let withdrawal_amount = 20;
+        let withdrawal_amount = dec!(20);
         let withdrawal_transaction_id = 3;
 
         assert_results(
@@ -867,7 +894,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount - withdrawal_amount,
                     locked: false,
                 },
@@ -879,7 +906,7 @@ mod test {
     #[test]
     fn test_unsuccessful_resolved_dispute_due_to_lack_of_dispute() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -897,7 +924,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -909,7 +936,7 @@ mod test {
     #[test]
     fn test_unsuccessful_resolved_dispute_due_to_double_resolve() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -935,7 +962,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -947,7 +974,7 @@ mod test {
     #[test]
     fn test_unsuccessful_resolved_dispute_due_to_transaction_not_found() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -981,7 +1008,7 @@ mod test {
     #[test]
     fn test_successful_deposit_chargeback() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -1003,8 +1030,8 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
-                    total: 0,
+                    held: dec!(0),
+                    total: dec!(0),
                     locked: true,
                 },
             )]),
@@ -1016,8 +1043,8 @@ mod test {
     fn test_successful_withdrawal_chargeback() {
         let client_id = 1;
         let deposit_transaction_id = 1;
-        let deposit_amount = 100;
-        let withdrawal_amount = 20;
+        let deposit_amount = dec!(100);
+        let withdrawal_amount = dec!(20);
         let withdrawal_transaction_id = 2;
 
         assert_results(
@@ -1044,8 +1071,8 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
-                    total: 100,
+                    held: dec!(0),
+                    total: dec!(100),
                     locked: true,
                 },
             )]),
@@ -1056,7 +1083,7 @@ mod test {
     #[test]
     fn test_unsuccessful_chargeback_due_to_not_disputed() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -1074,7 +1101,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -1086,7 +1113,7 @@ mod test {
     #[test]
     fn test_unsuccessful_chargeback_due_to_not_found_transaction() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -1104,7 +1131,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },
@@ -1116,7 +1143,7 @@ mod test {
     #[test]
     fn test_unsuccessful_chargeback_due_to_mismatched_client() {
         let client_id = 1;
-        let deposit_amount = 100;
+        let deposit_amount = dec!(100);
         let deposit_transaction_id = 2;
 
         assert_results(
@@ -1134,7 +1161,7 @@ mod test {
             HashMap::from([(
                 client_id,
                 Client {
-                    held: 0,
+                    held: dec!(0),
                     total: deposit_amount,
                     locked: false,
                 },

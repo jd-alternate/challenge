@@ -6,9 +6,12 @@ edition = "2021"
 [dependencies]
 csv = "1.1"
 serde = { version = "1", features = ["derive"] }
+rust_decimal = {version = "1.24", features = ["serde-str"] }
+rust_decimal_macros = "1.24"
 
 [dev-dependencies]
 pretty_assertions = "1.2.1"
+# for actually running my binary within an integration test and asserting on the output
 assert_cmd = "2.0.4"
 tempfile = "3.3.0"
 

@@ -10,16 +10,16 @@ fn test_successful_run() {
     // here we're going to actually create our CSV file and save it to a tmp file
     let input = concat!(
         "type,client,tx,    amount\n",
-        "deposit,1, 1, 1\n",
-        "deposit,2,2,2\n",
-        "deposit,1,3,   2\n",
-        "withdrawal,1,4     ,1   \n",
-        "withdrawal,2,5,3\n",
+        "deposit,1, 1, 1.11111\n",
+        "deposit,2,2,2.0\n",
+        "deposit,1,3,   2.0\n",
+        "withdrawal,1,4     ,1.5   \n",
+        "withdrawal,2,5,3.0\n",
     );
     let expected_output = concat!(
         "client,available,held,total,locked\n",
-        "1,2,0,2,false\n",
-        "2,2,0,2,false\n"
+        "1,1.61111,0,1.61111,false\n",
+        "2,2.0,0,2.0,false\n"
     );
     let tmp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
     fs::write(tmp_file.path(), input).expect("Failed to write to temp file");
@@ -74,7 +74,7 @@ fn test_malformed_csv() {
     // here we're going to actually create our CSV file and save it to a tmp file
     let input = concat!(
         "type,client,tx,    amount\n",
-        "deposit,1, 1, 1,UNEXPECTED\n",
+        "deposit,1.0, 1, 1.0,UNEXPECTED\n",
         "deposit,2,2,2\n",
     );
 

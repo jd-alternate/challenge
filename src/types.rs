@@ -1,8 +1,8 @@
+use rust_decimal::prelude::Decimal;
+
 // TODO: is this too little for one file?
 
-// TODO: consider using decimal type
-// TODO: handle 4 digits after decimal point
-pub type Amount = i32;
+pub type Amount = Decimal;
 
 pub type ClientID = u16;
 
