@@ -2,7 +2,7 @@
 
 use core::str::FromStr;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     error::Error,
@@ -11,7 +11,7 @@ use std::{
 
 use crate::model::{Amount, Client, ClientID, Event, TransactionID};
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Deserialize)]
 // intermediary struct for deserializing CSV
 pub struct CsvEvent {
     #[serde(rename = "type")]
@@ -25,6 +25,15 @@ pub struct CsvEvent {
     // I'm just having serde treat this as a string and then I'm manually mapping to a decimal
     // afterwards.
     amount: String,
+}
+
+#[derive(Serialize)]
+struct CsvClient {
+    client: ClientID,
+    available: Amount,
+    held: Amount,
+    total: Amount,
+    locked: bool,
 }
 
 // Returns an iterator which itself yields Events. It takes a reader that
@@ -79,9 +88,8 @@ fn parse_amount(amount: &str) -> Result<Amount, Box<dyn Error>> {
 // given writer in CSV form.
 pub fn write_report(
     final_state: HashMap<ClientID, Client>,
-    mut writer: impl Write,
+    writer: impl Write,
 ) -> Result<(), Box<dyn Error>> {
-    writer.write_all(b"client,available,held,total,locked\n")?;
     let mut entries: Vec<(ClientID, Client)> = final_state.into_iter().collect();
     // This sorting is admittedly mostly for the sake of making testing easier,
     // though I assume that actually producing a report is a small part that happens
@@ -90,22 +98,29 @@ pub fn write_report(
     // indifferent. If this assumption proves invalid we can ditch the sorting
     // and just update the test.
     entries.sort_by(|(a, _), (b, _)| a.cmp(b));
-    for (client_id, client) in entries {
-        writer.write_all(to_csv_row(client_id, &client).as_bytes())?;
+    let csv_clients = entries
+        .into_iter()
+        .map(|(client_id, client)| csv_client_from_client(client_id, client));
+
+    let mut wtr = csv::Writer::from_writer(writer);
+
+    for client in csv_clients {
+        wtr.serialize(client)?;
     }
+
+    wtr.flush()?;
 
     Ok(())
 }
 
-fn to_csv_row(client_id: ClientID, client: &Client) -> String {
-    format!(
-        "{},{},{},{},{}\n",
-        client_id,
-        client.available(),
-        client.held(),
-        client.total(),
-        client.locked()
-    )
+fn csv_client_from_client(client_id: ClientID, client: Client) -> CsvClient {
+    CsvClient {
+        client: client_id,
+        available: client.available(),
+        held: client.held(),
+        total: client.total(),
+        locked: client.locked(),
+    }
 }
 
 #[cfg(test)]
