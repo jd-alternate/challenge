@@ -1,31 +1,13 @@
 use std::{
-    env,
     error::Error,
-    fs::File,
-    io::{self, Read, Write},
+    io::{Read, Write},
 };
 mod format;
 mod model;
 mod system;
 
-// From a high-level, this library takes a command-line argument that points to
-// an input CSV file of events, reads the events from it, and writes the
-// resulting state to an output CSV file.
-
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let file = get_file_from_cli_arg()?;
-    let mut input = io::BufReader::new(file);
-
-    // `process_events` takes a writer for logging errors but we're skipping that
-    // here because it wasn't in the spec and the faster, the better. We could
-    // easily swap out io::sink for io::stderr
-    run_aux(&mut input, &mut io::stdout(), &mut io::sink())
-}
-
-// This is a more generic version of `run` which simply takes an input and
-// output, for ease of testing.
 #[inline]
-pub fn run_aux(
+pub fn run(
     input: &mut impl Read,
     output: &mut impl Write,
     err_output: &mut impl Write,
@@ -39,24 +21,15 @@ pub fn run_aux(
     Ok(())
 }
 
-fn get_file_from_cli_arg() -> Result<File, Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        return Err(format!("Usage: {} <filename>", args[0]).into());
-    }
-
-    let path = &args[1];
-    let file = File::open(&path)?;
-    Ok(file)
-}
-
 #[cfg(test)]
 mod test {
+    use std::io;
+
     use super::*;
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_run_aux() {
+    fn test_run() {
         let input = concat!(
             "type,client,tx,    amount\n",
             "deposit,1, 1, 1.11111\n",
@@ -72,7 +45,7 @@ mod test {
         );
 
         let mut output = Vec::new();
-        run_aux(&mut input.as_bytes(), &mut output, &mut io::sink()).expect("Unexpected error");
+        run(&mut input.as_bytes(), &mut output, &mut io::sink()).expect("Unexpected error");
 
         let output_str = String::from_utf8(output).expect("Not UTF-8");
 
