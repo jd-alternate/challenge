@@ -1,9 +1,11 @@
 // see https://bheisler.github.io/criterion.rs/book/getting_started.html
 use criterion::{criterion_group, criterion_main, Criterion};
+use rand::Rng;
 
 use challenge::run_aux;
 
-use rand::Rng;
+const CSV_ROW_COUNT: i32 = 100_000;
+const SAMPLE_SIZE: usize = 20;
 
 fn generate_csv() -> String {
     let mut max_client_id = 0;
@@ -13,8 +15,7 @@ fn generate_csv() -> String {
     let mut rng = rand::thread_rng();
     let mut client_transactions = Vec::<(u16, u32)>::new();
 
-    for _ in 1..1000 {
-        // need to decide on the type of event at random
+    for _ in 1..CSV_ROW_COUNT {
         let value = rng.gen_range(0..10);
         match value {
             0..=7 => {
@@ -27,7 +28,7 @@ fn generate_csv() -> String {
                     max_client_id += 1;
                     max_client_id - 1
                 } else {
-                    rng.gen_range(0..=max_client_id)
+                    rng.gen_range(0..=max_client_id - 1)
                 };
                 max_transaction_id += 1;
                 let transaction_id = max_transaction_id;
@@ -46,9 +47,10 @@ fn generate_csv() -> String {
                     _ => unreachable!(),
                 };
 
-                if let Some((client_id, transaction_id)) =
-                    client_transactions.get(rng.gen_range(0..client_transactions.len()))
-                {
+                if client_transactions.len() > 0 {
+                    let (client_id, transaction_id) = client_transactions
+                        .get(rng.gen_range(0..client_transactions.len()))
+                        .unwrap();
                     csv.push_str(&format!("{},{},{},\n", kind, client_id, transaction_id));
                 }
             }
@@ -59,15 +61,17 @@ fn generate_csv() -> String {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    // I'm going to create a huge CSV file and then run the program on it.
     let input = generate_csv();
 
-    c.bench_function("large CSV", |b| {
+    let mut group = c.benchmark_group("run_aux");
+    group.sample_size(SAMPLE_SIZE);
+    group.bench_function("run_aux", |b| {
         b.iter(|| {
             let mut output = Vec::new();
             crate::run_aux(&mut input.as_bytes(), &mut output).expect("Unexpected error");
         })
     });
+    group.finish();
 }
 
 criterion_group!(benches, criterion_benchmark);
