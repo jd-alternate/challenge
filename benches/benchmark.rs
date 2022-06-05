@@ -52,7 +52,7 @@ fn generate_csv() -> String {
                 if client_transactions.len() > 0 {
                     let (client_id, transaction_id) = client_transactions
                         .get(rng.gen_range(0..client_transactions.len()))
-                        .unwrap();
+                        .expect("Expected a client transaction.");
                     csv.push_str(&format!("{},{},{},\n", kind, client_id, transaction_id));
                 }
             }

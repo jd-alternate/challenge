@@ -24,7 +24,7 @@ fn test_successful_run() {
     let tmp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
     fs::write(tmp_file.path(), input).expect("Failed to write to temp file");
 
-    let mut cmd = Command::cargo_bin("challenge").unwrap();
+    let mut cmd = Command::cargo_bin("challenge").expect("Expected to find binary");
     let output = cmd
         .arg(tmp_file.path())
         .output()
@@ -38,7 +38,7 @@ fn test_successful_run() {
 
 #[test]
 fn test_invalid_args() {
-    let mut cmd = Command::cargo_bin("challenge").unwrap();
+    let mut cmd = Command::cargo_bin("challenge").expect("Expected to find binary");
     let output = cmd.output().expect("Expected no errors");
 
     assert_eq!(Some(1), output.status.code());
@@ -53,7 +53,7 @@ fn test_invalid_args() {
 
 #[test]
 fn test_file_not_found() {
-    let mut cmd = Command::cargo_bin("challenge").unwrap();
+    let mut cmd = Command::cargo_bin("challenge").expect("Expected to find binary");
     let output = cmd
         .arg("/tmp/does-not-exist")
         .output()
