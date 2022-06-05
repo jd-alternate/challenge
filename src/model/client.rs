@@ -6,7 +6,7 @@ use rust_decimal_macros::dec;
 pub type ClientID = u16;
 
 // Represents the current state of a client account.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Client {
     held: Amount,
     total: Amount,
