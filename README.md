@@ -97,6 +97,10 @@ If we said that for withdrawals we instead hold a negative amount, that would ma
 
 It's possible that the spec implicitly only wants us to handle disputes on withdrawals, but it's commonplace for banks to handle disputes for both withdrawals and deposits, so I'm going with the above approach.
 
+#### Chargebacks
+
+I'm assuming that a chargeback is only valid if a given transaction is in a disputed status. If a transaction is not disputed we will fail a chargeback, assuming that it was done in error. In the real world I would assume that if a staff member wanted to chargeback a transaction without there being a dispute, they would first manually create a dispute and then perform the chargeback.
+
 ## Testing
 
 I've got unit tests for both the system and the formatting code, however I've chosen not to test the Client, Transaction, or Processor structs directly, simply because I consider the logic contained within those to be implementation details that could be refactored to live somewhere else, and I don't want to have to rewrite tests in that case.
