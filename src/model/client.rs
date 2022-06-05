@@ -70,11 +70,16 @@ impl Client {
     }
 
     pub fn hold(&mut self, amount: Amount) {
-        // TODO: can you hold negative money?
         self.held += amount;
     }
 
-    pub fn chargeback(&mut self, amount: Amount) {
+    pub fn chargeback_withdrawal(&mut self, amount: Amount) {
+        self.held -= amount;
+        self.total += amount;
+        self.locked = true;
+    }
+
+    pub fn chargeback_deposit(&mut self, amount: Amount) {
         self.held -= amount;
         self.total -= amount;
         self.locked = true;

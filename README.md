@@ -85,7 +85,11 @@ Dispute events contain both a transaction ID and a client ID but the transaction
 
 #### Holding funds
 
-The spec describes how the held amount changes for the different dispute steps but seems to only consider the case of a deposit. For example, I'm told that if we're disputing money, we need to hold the disputed amount. But intuitively it seems like if we're holding a positive amount for a deposit, we should be holding a negative amount for a withdrawal. This leads to strange behaviour where a withdrawal can be disputed, leading to the client immediately having more available funds, which seems wrong. I'm not sure if only deposits should be disputable. At the moment I've got withdrawals being disputable and holding a negative amount of money, but this is almost certainly not what we want.
+The spec says that upon disputing a transaction, the disputed funds should be held. I assume this means that we're holding a positive amount regardless of whether the given transaction was a withdrawal or a deposit. A resolved dispute just takes us back to where we were before the dispute was lodged which means decreasing the held funds. And a chargeback takes us back to before the original transaction took place, which in the case of a deposit means a decrease in total funds, and in the case of a withdrawal means an increase in total funds. The spec says there should be a decrease in total funds so I'm assuming that's only talking about the deposit case.
+
+If we said that for withdrawals we instead hold a negative amount, that would make the available funds go up, so a malicious client could just keep withdrawing and disputing ad infinitum which sounds like something we don't want.
+
+It's possible that the spec implicitly only wants us to handle disputes on withdrawals, but it's commonplace for banks to handle disputes for both withdrawals and deposits, so I'm going with the above approach.
 
 ## Testing
 

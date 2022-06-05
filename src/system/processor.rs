@@ -96,14 +96,7 @@ impl Processor {
 
         transaction.validate_dispute_status_transition(DisputeStatus::Disputed)?;
 
-        match transaction.kind() {
-            TransactionKind::Deposit => {
-                client.hold(transaction.amount());
-            }
-            TransactionKind::Withdrawal => {
-                client.hold(-transaction.amount());
-            }
-        };
+        client.hold(transaction.amount());
 
         transaction.set_dispute_status(DisputeStatus::Disputed);
 
@@ -120,15 +113,7 @@ impl Processor {
 
         transaction.validate_dispute_status_transition(DisputeStatus::None)?;
 
-        match transaction.kind() {
-            TransactionKind::Deposit => {
-                client.hold(-transaction.amount());
-            }
-
-            TransactionKind::Withdrawal => {
-                client.hold(transaction.amount());
-            }
-        };
+        client.hold(-transaction.amount());
 
         transaction.set_dispute_status(DisputeStatus::None);
 
@@ -147,11 +132,11 @@ impl Processor {
 
         match transaction.kind() {
             TransactionKind::Deposit => {
-                client.chargeback(transaction.amount());
+                client.chargeback_deposit(transaction.amount());
             }
 
             TransactionKind::Withdrawal => {
-                client.chargeback(-transaction.amount());
+                client.chargeback_withdrawal(transaction.amount());
             }
         };
 
