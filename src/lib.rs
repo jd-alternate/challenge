@@ -16,6 +16,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let file = get_file_from_cli_arg()?;
     let mut input = io::BufReader::new(file);
 
+    // `process_events` takes a writer for logging errors but we're skipping that
+    // here because it wasn't in the spec and the faster, the better. We could
+    // easily swap out io::sink for io::stderr
     run_aux(&mut input, &mut io::stdout(), &mut io::sink())
 }
 
@@ -29,9 +32,6 @@ pub fn run_aux(
 ) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::input::parse_events(input);
 
-    // `process_events` takes a writer for logging errors but we're skipping that
-    // here because it wasn't in the spec and the faster, the better. We could
-    // easily swap out io::sink for io::stderr
     let final_state = system::process_events(events_iter, err_output)?;
 
     format::csv::output::write_report(final_state, output)?;
