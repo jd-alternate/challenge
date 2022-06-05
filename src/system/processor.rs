@@ -97,21 +97,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        match transaction.dispute_status() {
-            DisputeStatus::Pending => {
-                return Err(format!(
-                    "Transaction {} is already under dispute.",
-                    transaction_id
-                ));
-            }
-            DisputeStatus::ChargedBack => {
-                return Err(format!(
-                    "Transaction {} has already been charged back.",
-                    transaction_id
-                ));
-            }
-            DisputeStatus::None => {}
-        }
+        transaction.validate_dispute_status_transition(DisputeStatus::Pending)?;
 
         match transaction.kind() {
             TransactionKind::Deposit => {
@@ -135,12 +121,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !transaction.is_under_dispute() {
-            return Err(format!(
-                "Transaction {} is not under dispute.",
-                transaction_id
-            ));
-        }
+        transaction.validate_dispute_status_transition(DisputeStatus::None)?;
 
         match transaction.kind() {
             TransactionKind::Deposit => {
@@ -165,12 +146,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        if !transaction.is_under_dispute() {
-            return Err(format!(
-                "Transaction {} is not under dispute.",
-                transaction_id
-            ));
-        }
+        transaction.validate_dispute_status_transition(DisputeStatus::ChargedBack)?;
 
         match transaction.kind() {
             TransactionKind::Deposit => {

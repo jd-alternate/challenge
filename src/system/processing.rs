@@ -334,7 +334,7 @@ mod test {
                 client_id,
                 Client::from(deposit_amount, deposit_amount, false),
             )]),
-            vec![String::from("Transaction 2 is already under dispute.")],
+            vec![String::from("Transaction is already disputed.")],
         );
     }
 
@@ -365,7 +365,7 @@ mod test {
                 }),
             ],
             HashMap::from([(client_id, Client::from(dec!(0), dec!(0), true))]),
-            vec![String::from("Transaction 2 has already been charged back.")],
+            vec![String::from("Transaction has already been charged back.")],
         );
     }
 
@@ -512,7 +512,7 @@ mod test {
                 }),
             ],
             HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
-            vec![String::from("Transaction 2 is not under dispute.")],
+            vec![String::from("Transaction is not disputed.")],
         );
     }
 
@@ -543,7 +543,7 @@ mod test {
                 }),
             ],
             HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
-            vec![String::from("Transaction 2 is not under dispute.")],
+            vec![String::from("Transaction is not disputed.")],
         );
     }
 
@@ -657,7 +657,7 @@ mod test {
                 }),
             ],
             HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
-            vec![String::from("Transaction 2 is not under dispute.")],
+            vec![String::from("Transaction is not disputed.")],
         );
     }
 

@@ -45,15 +45,26 @@ impl Transaction {
         &self.kind
     }
 
-    pub fn dispute_status(&self) -> &DisputeStatus {
-        &self.dispute_status
-    }
-
     pub fn set_dispute_status(&mut self, dispute_status: DisputeStatus) {
         self.dispute_status = dispute_status;
     }
 
-    pub fn is_under_dispute(&self) -> bool {
-        matches!(self.dispute_status(), DisputeStatus::Pending)
+    pub fn validate_dispute_status_transition(
+        &self,
+        new_dispute_status: DisputeStatus,
+    ) -> Result<(), String> {
+        match (&self.dispute_status, new_dispute_status) {
+            (DisputeStatus::None, DisputeStatus::Pending)
+            | (DisputeStatus::Pending, DisputeStatus::None)
+            | (DisputeStatus::Pending, DisputeStatus::ChargedBack) => Ok(()),
+
+            (DisputeStatus::ChargedBack, _) => {
+                Err(String::from("Transaction has already been charged back."))
+            }
+            (DisputeStatus::None, _) => Err(String::from("Transaction is not disputed.")),
+            (DisputeStatus::Pending, DisputeStatus::Pending) => {
+                Err(String::from("Transaction is already disputed."))
+            }
+        }
     }
 }
