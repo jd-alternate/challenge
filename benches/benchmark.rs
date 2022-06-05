@@ -5,6 +5,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
 
 use challenge::run_aux;
+mod perf;
 
 const CSV_ROW_COUNT: i32 = 100_000;
 const SAMPLE_SIZE: usize = 20;
@@ -62,6 +63,8 @@ fn generate_csv() -> String {
     csv
 }
 
+// to view the flame graph, open
+// `target/criterion/run_aux/run_aux/profile/flamegraph.svg`
 fn criterion_benchmark(c: &mut Criterion) {
     let input = generate_csv();
 
@@ -77,5 +80,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group! {
+  name = benches;
+  config = Criterion::default().with_profiler(perf::FlamegraphProfiler::new(100));
+  targets = criterion_benchmark
+}
+
 criterion_main!(benches);
