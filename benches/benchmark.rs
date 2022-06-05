@@ -4,7 +4,7 @@ use std::io;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
 
-use challenge::run;
+use challenge::process_csv_events;
 mod perf;
 
 const CSV_ROW_COUNT: i32 = 100_000;
@@ -64,16 +64,17 @@ fn generate_csv() -> String {
 }
 
 // to view the flame graph, open
-// `target/criterion/run/run/profile/flamegraph.svg`
+// `target/criterion/process_csv_events/process_csv_events/profile/flamegraph.
+// svg`
 fn criterion_benchmark(c: &mut Criterion) {
     let input = generate_csv();
 
-    let mut group = c.benchmark_group("run");
+    let mut group = c.benchmark_group("process_csv_events");
     group.sample_size(SAMPLE_SIZE);
-    group.bench_function("run", |b| {
+    group.bench_function("process_csv_events", |b| {
         b.iter(|| {
             let mut output = Vec::new();
-            crate::run(&mut input.as_bytes(), &mut output, &mut io::sink())
+            crate::process_csv_events(&mut input.as_bytes(), &mut output, &mut io::sink())
                 .expect("Unexpected error");
         })
     });

@@ -2,12 +2,12 @@ use std::{
     error::Error,
     io::{Read, Write},
 };
-mod format;
-mod model;
-mod system;
+pub mod format;
+pub mod model;
+pub mod system;
 
 #[inline]
-pub fn run(
+pub fn process_csv_events(
     input: &mut impl Read,
     output: &mut impl Write,
     err_output: &mut impl Write,
@@ -29,7 +29,7 @@ mod test {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_run() {
+    fn test_process_csv_events() {
         let input = concat!(
             "type,client,tx,    amount\n",
             "deposit,1, 1, 1.11111\n",
@@ -45,7 +45,8 @@ mod test {
         );
 
         let mut output = Vec::new();
-        run(&mut input.as_bytes(), &mut output, &mut io::sink()).expect("Unexpected error");
+        process_csv_events(&mut input.as_bytes(), &mut output, &mut io::sink())
+            .expect("Unexpected error");
 
         let output_str = String::from_utf8(output).expect("Not UTF-8");
 
