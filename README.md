@@ -92,3 +92,7 @@ The spec describes how the held amount changes for the different dispute steps b
 I've got unit tests for both the system and the formatting code, however I've chosen not to test the Client, Transaction, or Processor structs directly, simply because I consider the logic contained within those to be implementation details that could be refactored to live somewhere else, and I don't want to have to rewrite tests in that case.
 
 I've got a couple of integration tests that use the assert_cmd crate to actually run the binary against a real file created in a temp directory, just to ensure that the end-to-end works, but given that they run slower than the unit tests, there aren't many.
+
+## Errors
+
+I've mostly stuck to String errors just for the sake of simplicity, given that this is an application. The spec doesn't express any need for logging errors, however I found it useful to do so anyway for the sake of testing. My event processing function takes an error writer to log all the events to (which could be io::stderr) but in the name of performance I'm just going to writing to `io::sink` when the actual application is run, knowing it's trivially easy to swap that out.
