@@ -65,7 +65,7 @@ I've got a function for processing events which takes the Events iterator and re
 
 ### Storage of state
 
-Given that we could be given any client ID and any transaction ID in an event, I decided against using an array to store my data because it might be too sparse and memory intensive. With that said, it would be interesting to do some benchmarking and see how we'd go using an array of 2^16 elements for the clients, whose ids are only 16 bits.
+Given that we could be given any client ID and any transaction ID in an event, I decided against using a vector to store my data because it might be too sparse and memory intensive. I used a benchmark test to see if using a pre-allocated vector for my client ids (i.e. of size 2^16) was any faster than a HashMap and I saw no difference.
 
 ### Assumptions
 
