@@ -1,5 +1,6 @@
 use crate::model::{
-    Amount, Client, ClientID, DisputeStatus, Event, Transaction, TransactionID, TransactionKind,
+    Amount, Client, ClientID, DisputeStatus, DisputeStepKind, Event, Transaction, TransactionID,
+    TransactionKind,
 };
 
 use std::collections::HashMap;
@@ -28,28 +29,24 @@ impl Processor {
 
     pub fn process_event(&mut self, event: Event) -> Result<(), String> {
         match event {
-            Event::Deposit {
+            Event::Transaction {
+                kind,
                 transaction_id,
                 client_id,
                 amount,
-            } => self.deposit(transaction_id, client_id, amount),
-            Event::Withdrawal {
+            } => match kind {
+                TransactionKind::Deposit => self.deposit(transaction_id, client_id, amount),
+                TransactionKind::Withdrawal => self.withdraw(transaction_id, client_id, amount),
+            },
+            Event::DisputeStep {
+                kind,
                 transaction_id,
                 client_id,
-                amount,
-            } => self.withdraw(transaction_id, client_id, amount),
-            Event::Dispute {
-                transaction_id,
-                client_id,
-            } => self.dispute(transaction_id, client_id),
-            Event::Resolve {
-                transaction_id,
-                client_id,
-            } => self.resolve(transaction_id, client_id),
-            Event::Chargeback {
-                transaction_id,
-                client_id,
-            } => self.chargeback(transaction_id, client_id),
+            } => match kind {
+                DisputeStepKind::Dispute => self.dispute(transaction_id, client_id),
+                DisputeStepKind::Resolve => self.resolve(transaction_id, client_id),
+                DisputeStepKind::Chargeback => self.chargeback(transaction_id, client_id),
+            },
         }
     }
 
@@ -97,7 +94,7 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        transaction.validate_dispute_status_transition(DisputeStatus::Pending)?;
+        transaction.validate_dispute_status_transition(DisputeStatus::Disputed)?;
 
         match transaction.kind() {
             TransactionKind::Deposit => {
@@ -108,7 +105,7 @@ impl Processor {
             }
         };
 
-        transaction.set_dispute_status(DisputeStatus::Pending);
+        transaction.set_dispute_status(DisputeStatus::Disputed);
 
         Ok(())
     }

@@ -12,6 +12,7 @@ pub struct Transaction {
     dispute_status: DisputeStatus,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TransactionKind {
     Deposit,
     Withdrawal,
@@ -19,7 +20,7 @@ pub enum TransactionKind {
 
 pub enum DisputeStatus {
     None, // if a dispute is resolves, we go back to this state
-    Pending,
+    Disputed,
     ChargedBack,
 }
 
@@ -54,15 +55,15 @@ impl Transaction {
         new_dispute_status: DisputeStatus,
     ) -> Result<(), String> {
         match (&self.dispute_status, new_dispute_status) {
-            (DisputeStatus::None, DisputeStatus::Pending)
-            | (DisputeStatus::Pending, DisputeStatus::None)
-            | (DisputeStatus::Pending, DisputeStatus::ChargedBack) => Ok(()),
+            (DisputeStatus::None, DisputeStatus::Disputed)
+            | (DisputeStatus::Disputed, DisputeStatus::None)
+            | (DisputeStatus::Disputed, DisputeStatus::ChargedBack) => Ok(()),
 
             (DisputeStatus::ChargedBack, _) => {
                 Err(String::from("Transaction has already been charged back."))
             }
             (DisputeStatus::None, _) => Err(String::from("Transaction is not disputed.")),
-            (DisputeStatus::Pending, DisputeStatus::Pending) => {
+            (DisputeStatus::Disputed, DisputeStatus::Disputed) => {
                 Err(String::from("Transaction is already disputed."))
             }
         }

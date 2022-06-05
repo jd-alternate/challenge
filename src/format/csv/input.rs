@@ -3,7 +3,7 @@ use core::str::FromStr;
 use serde::Deserialize;
 use std::{error::Error, io::Read};
 
-use crate::model::{Amount, ClientID, Event, TransactionID};
+use crate::model::{Amount, ClientID, DisputeStepKind, Event, TransactionID, TransactionKind};
 
 #[derive(Deserialize)]
 // intermediary struct for deserializing CSV
@@ -33,25 +33,30 @@ pub fn parse_events(reader: impl Read) -> impl Iterator<Item = Result<Event, Box
 
 fn parse_csv_event(csv_event: CsvEvent) -> Result<Event, Box<dyn Error>> {
     let event = match csv_event.kind.as_ref() {
-        "deposit" => Event::Deposit {
+        "deposit" => Event::Transaction {
+            kind: TransactionKind::Deposit,
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
             amount: parse_amount(&csv_event.amount)?,
         },
-        "withdrawal" => Event::Withdrawal {
+        "withdrawal" => Event::Transaction {
+            kind: TransactionKind::Withdrawal,
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
             amount: parse_amount(&csv_event.amount)?,
         },
-        "dispute" => Event::Dispute {
+        "dispute" => Event::DisputeStep {
+            kind: DisputeStepKind::Dispute,
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
         },
-        "resolve" => Event::Resolve {
+        "resolve" => Event::DisputeStep {
+            kind: DisputeStepKind::Resolve,
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
         },
-        "chargeback" => Event::Chargeback {
+        "chargeback" => Event::DisputeStep {
+            kind: DisputeStepKind::Chargeback,
             transaction_id: csv_event.transaction_id,
             client_id: csv_event.client_id,
         },
@@ -100,25 +105,30 @@ mod test {
 
         assert_eq!(
             vec![
-                Event::Deposit {
+                Event::Transaction {
+                    kind: TransactionKind::Deposit,
                     client_id: 1,
                     transaction_id: 2,
                     amount: dec!(3.12345),
                 },
-                Event::Withdrawal {
+                Event::Transaction {
+                    kind: TransactionKind::Withdrawal,
                     client_id: 4,
                     transaction_id: 5,
                     amount: dec!(6),
                 },
-                Event::Dispute {
+                Event::DisputeStep {
+                    kind: DisputeStepKind::Dispute,
                     client_id: 7,
                     transaction_id: 8,
                 },
-                Event::Resolve {
+                Event::DisputeStep {
+                    kind: DisputeStepKind::Resolve,
                     client_id: 9,
                     transaction_id: 10,
                 },
-                Event::Chargeback {
+                Event::DisputeStep {
+                    kind: DisputeStepKind::Chargeback,
                     client_id: 11,
                     transaction_id: 12,
                 }
@@ -141,7 +151,8 @@ mod test {
 
         match result.get(0) {
             Some(Ok(event)) => assert_eq!(
-                Event::Deposit {
+                Event::Transaction {
+                    kind: TransactionKind::Deposit,
                     client_id: 1,
                     transaction_id: 1,
                     amount: dec!(1),
@@ -156,7 +167,8 @@ mod test {
 
         match result.get(2) {
             Some(Ok(event)) => assert_eq!(
-                Event::Deposit {
+                Event::Transaction {
+                    kind: TransactionKind::Deposit,
                     client_id: 2,
                     transaction_id: 2,
                     amount: dec!(2),
