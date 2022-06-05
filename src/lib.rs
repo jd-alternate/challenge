@@ -16,19 +16,23 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let file = get_file_from_cli_arg()?;
     let mut input = io::BufReader::new(file);
 
-    run_aux(&mut input, &mut io::stdout())
+    run_aux(&mut input, &mut io::stdout(), &mut io::sink())
 }
 
 // This is a more generic version of `run` which simply takes an input and
 // output, for ease of testing.
 #[inline]
-pub fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+pub fn run_aux(
+    input: &mut impl Read,
+    output: &mut impl Write,
+    err_output: &mut impl Write,
+) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::input::parse_events(input);
 
     // `process_events` takes a writer for logging errors but we're skipping that
     // here because it wasn't in the spec and the faster, the better. We could
     // easily swap out io::sink for io::stderr
-    let final_state = system::process_events(events_iter, &mut io::sink())?;
+    let final_state = system::process_events(events_iter, err_output)?;
 
     format::csv::output::write_report(final_state, output)?;
 
@@ -68,7 +72,7 @@ mod test {
         );
 
         let mut output = Vec::new();
-        run_aux(&mut input.as_bytes(), &mut output).expect("Unexpected error");
+        run_aux(&mut input.as_bytes(), &mut output, &mut io::sink()).expect("Unexpected error");
 
         let output_str = String::from_utf8(output).expect("Not UTF-8");
 

@@ -1,3 +1,5 @@
+use std::io;
+
 // see https://bheisler.github.io/criterion.rs/book/getting_started.html
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
@@ -68,7 +70,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("run_aux", |b| {
         b.iter(|| {
             let mut output = Vec::new();
-            crate::run_aux(&mut input.as_bytes(), &mut output).expect("Unexpected error");
+            crate::run_aux(&mut input.as_bytes(), &mut output, &mut io::sink())
+                .expect("Unexpected error");
         })
     });
     group.finish();
