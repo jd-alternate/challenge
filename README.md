@@ -95,4 +95,4 @@ I've got a couple of integration tests that use the assert_cmd crate to actually
 
 ## Errors
 
-I've mostly stuck to String errors just for the sake of simplicity, given that this is an application. The spec doesn't express any need for logging errors, however I found it useful to do so anyway for the sake of testing. My event processing function takes an error writer to log all the events to (which could be io::stderr) but in the name of performance I'm just going to writing to `io::sink` when the actual application is run, knowing it's trivially easy to swap that out.
+I've mostly stuck to String errors just for the sake of simplicity, given that this is an application. The spec doesn't express any need for logging errors, however I found it useful to do so anyway for the sake of testing. My event processing function takes an error writer to log all the events to (which could be io::stderr) but in the name of performance (writing to stderr more than doubles the running time in my benchmark) I'm just going to write to `io::sink` when the actual application is run, knowing it's trivially easy to swap that out.
