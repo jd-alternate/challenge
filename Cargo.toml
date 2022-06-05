@@ -14,9 +14,15 @@ pretty_assertions = "1.2.1"
 # for actually running my binary within an integration test and asserting on the output
 assert_cmd = "2.0.4"
 tempfile = "3.3.0"
+rand = "0.8.5"
+criterion = "0.3"
 
 [[bin]]
 name = "challenge"
 
 [lib]
 name = "challenge"
+
+[[bench]]
+name = "benchmark"
+harness = false

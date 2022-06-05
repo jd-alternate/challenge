@@ -21,7 +21,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
 // This is a more generic version of `run` which simply takes an input and
 // output, for ease of testing.
-fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+#[inline]
+pub fn run_aux(input: &mut impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
     let events_iter = format::csv::input::parse_events(input);
 
     // `process_events` takes a writer for logging errors but we're skipping that
