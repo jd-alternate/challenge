@@ -9,14 +9,14 @@ use std::collections::HashMap;
 // processes new events. We're not testing it directly because it's an
 // implementation detail.
 pub struct Processor {
-    clients_by_id: HashMap<ClientID, Client>,
+    clients: Vec<Option<Client>>,
     transactions_by_id: HashMap<TransactionID, Transaction>,
 }
 
 impl Processor {
     pub fn new() -> Self {
         Self {
-            clients_by_id: HashMap::new(),
+            clients: vec![None; ClientID::MAX as usize],
             transactions_by_id: HashMap::new(),
         }
     }
@@ -24,7 +24,14 @@ impl Processor {
     // Expected to be called once all the events have been processed, hence taking
     // ownership of `self`.
     pub fn clients_by_id(self) -> HashMap<ClientID, Client> {
-        self.clients_by_id
+        HashMap::from(
+            self.clients
+                .into_iter()
+                .enumerate()
+                .filter(|&(_, client)| client.is_some())
+                .map(|(index, client)| (index as ClientID, client.unwrap()))
+                .collect::<HashMap<ClientID, Client>>(),
+        )
     }
 
     pub fn process_event(&mut self, event: Event) -> Result<(), String> {
@@ -190,9 +197,12 @@ impl Processor {
     }
 
     fn find_or_create_client(&mut self, client_id: ClientID) -> &mut Client {
-        self.clients_by_id
-            .entry(client_id)
-            .or_insert_with(Client::new)
+        if let None = self.clients[client_id as usize] {
+            let new_client = Client::new();
+            self.clients[client_id as usize] = Some(new_client);
+        }
+
+        self.clients[client_id as usize].as_mut().unwrap()
     }
 
     fn create_transaction(&mut self, transaction_id: TransactionID, transaction: Transaction) {
@@ -208,9 +218,8 @@ impl Processor {
             .get_mut(&transaction_id)
             .ok_or(format!("Transaction {} not found.", transaction_id))?;
 
-        let client = self
-            .clients_by_id
-            .get_mut(&transaction.client_id())
+        let client = self.clients[transaction.client_id() as usize]
+            .as_mut()
             .ok_or(format!(
                 "Client {} does not exist.",
                 transaction.client_id()
