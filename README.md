@@ -65,7 +65,13 @@ I've got a function for processing events which takes the Events iterator and re
 
 ### Storage of state
 
+We're storing both clients and transactions in two separate HashMaps, keyed by ID.
+
 Given that we could be given any client ID and any transaction ID in an event, I decided against using a vector to store my data because it might be too sparse and memory intensive. I used a benchmark test to see if using a pre-allocated vector for my client ids (i.e. of size 2^16) was any faster than a HashMap and I saw no difference.
+
+Given that transactions belong to clients, we could have each client storing their transactions internally, however, given the fact that transaction ids are globally unique, if we wanted to assert that a given transaction did not already exist before processing it, we would need to go looking through each client to see if they have a transaction with a matching ID. So I'm keeping the transactions separate from the clients, with transactions containing a client ID.
+
+Having our Clients separated from Transactions also makes it easier to serialize the data (e.g. to a database) if needed down the line.
 
 ### Assumptions
 
