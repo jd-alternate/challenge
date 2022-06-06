@@ -4,7 +4,10 @@ use std::{fmt::Write, io};
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::Rng;
 
-use challenge::process_csv_events;
+use challenge::{
+    model::{ClientID, TransactionID},
+    process_csv_events,
+};
 mod perf;
 
 const CSV_ROW_COUNT: i32 = 100_000;
@@ -16,7 +19,7 @@ fn generate_csv() -> String {
 
     let mut csv = String::from("type,client,tx,amount\n");
     let mut rng = rand::thread_rng();
-    let mut client_transactions = Vec::<(u16, u32)>::new();
+    let mut client_transactions = Vec::<(ClientID, TransactionID)>::new();
 
     for _ in 1..CSV_ROW_COUNT {
         let value = rng.gen_range(0..10);
