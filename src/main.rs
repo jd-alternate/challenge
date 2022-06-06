@@ -5,13 +5,12 @@ use std::{env, error::Error, fs::File, io};
 // resulting state to an output CSV file.
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file = get_file_from_cli_arg()?;
-    let mut input = io::BufReader::new(file);
+    let mut file = get_file_from_cli_arg()?;
 
     // `process_csv_events` takes a writer for logging errors but we're skipping
     // that here because it wasn't in the spec and the faster, the better. We
     // could easily swap out io::sink for io::stderr
-    challenge::process_csv_events(&mut input, &mut io::stdout(), &mut io::sink())
+    challenge::process_csv_events(&mut file, &mut io::stdout(), &mut io::sink())
 }
 
 fn get_file_from_cli_arg() -> Result<File, Box<dyn Error>> {
