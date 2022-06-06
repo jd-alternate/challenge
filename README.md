@@ -107,6 +107,8 @@ I've got unit tests for both the system and the formatting code, however I've ch
 
 I've got a couple of integration tests that use the assert_cmd crate to actually run the binary against a real file created in a temp directory, just to ensure that the end-to-end works, but given that they run slower than the unit tests, there aren't many.
 
+I've also got a benchmark test which uses the criterion crate and pprof to produce a flamegraph. Looks like the CSV parsing part of the program is the bottleneck right now so that's where I'd look first to speed things up.
+
 ## Errors
 
 I've mostly stuck to String errors just for the sake of simplicity, given that this is an application and not a library. The spec doesn't express any need for logging errors, however I found it useful to do so anyway for the sake of testing. My event processing function takes an error writer to log all the events to (which could be io::stderr) but in the name of performance (writing to stderr more than doubles the running time in my benchmark) I'm just going to write to `io::sink` when the actual application is run, knowing it's trivially easy to swap that out.
