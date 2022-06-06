@@ -111,11 +111,11 @@ impl Processor {
         let (transaction, client) = self.get_transaction_and_client(transaction_id)?;
         Self::check_client_owns_transaction(client_id, transaction)?;
 
-        transaction.validate_dispute_status_transition(DisputeStatus::None)?;
+        transaction.validate_dispute_status_transition(DisputeStatus::Undisputed)?;
 
         client.hold(-transaction.amount());
 
-        transaction.set_dispute_status(DisputeStatus::None);
+        transaction.set_dispute_status(DisputeStatus::Undisputed);
 
         Ok(())
     }

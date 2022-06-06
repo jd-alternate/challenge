@@ -19,10 +19,12 @@ pub enum TransactionKind {
 }
 
 pub enum DisputeStatus {
-    None, // if a dispute is resolves, we go back to this state
+    Undisputed, // if a dispute is resolves, we go back to this state
     Disputed,
     ChargedBack,
 }
+
+use DisputeStatus::*;
 
 impl Transaction {
     pub fn new(client_id: ClientID, amount: Amount, kind: TransactionKind) -> Self {
@@ -30,7 +32,7 @@ impl Transaction {
             client_id,
             amount,
             kind,
-            dispute_status: DisputeStatus::None,
+            dispute_status: Undisputed,
         }
     }
 
@@ -55,17 +57,11 @@ impl Transaction {
         new_dispute_status: DisputeStatus,
     ) -> Result<(), String> {
         match (&self.dispute_status, new_dispute_status) {
-            (DisputeStatus::None, DisputeStatus::Disputed)
-            | (DisputeStatus::Disputed, DisputeStatus::None)
-            | (DisputeStatus::Disputed, DisputeStatus::ChargedBack) => Ok(()),
+            (Undisputed, Disputed) | (Disputed, Undisputed) | (Disputed, ChargedBack) => Ok(()),
 
-            (DisputeStatus::ChargedBack, _) => {
-                Err(String::from("Transaction has already been charged back."))
-            }
-            (DisputeStatus::None, _) => Err(String::from("Transaction is not disputed.")),
-            (DisputeStatus::Disputed, DisputeStatus::Disputed) => {
-                Err(String::from("Transaction is already disputed."))
-            }
+            (ChargedBack, _) => Err(String::from("Transaction has already been charged back.")),
+            (Undisputed, _) => Err(String::from("Transaction is not disputed.")),
+            (Disputed, Disputed) => Err(String::from("Transaction is already disputed.")),
         }
     }
 }
