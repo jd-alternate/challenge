@@ -41,7 +41,7 @@ Unlike Events which are immutable, the Client and Transaction structs are mutabl
 
 One downside of locking down my fields is that it's harder to write assertions in tests without providing a constructor function that lets you build a client with the exact fields you want to assert on. With more time I'd look into structuring the code such that those tests have permission to just create Client structs directly without the additional ceremony, by virtue of where they sit in the module hierarchy.
 
-I should mention that the approach I've taken with Client and Transaction is fairly object-oriented (in the sense that we're colocating data with methods that act on that data); a pattern which has declined in favour over time. At any rate, I think in this case it results in fairly readable code, though I'd be interested in exploring more functional alternatives.
+I should mention that the approach I've taken with Client and Transaction is fairly object-oriented (in the sense that we're colocating data with methods that act on that data); a pattern which has declined in favour over time. At any rate, I think in this case it results in fairly readable code, though it would be interesting to see how far you could go by having a reducer which is just a function that takes the current state and an event and returns the new state immutably, but I suspect that would be less efficient than just directly mutating the current state as we're doing now.
 
 ### Storing IDs
 
