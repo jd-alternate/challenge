@@ -29,7 +29,7 @@ impl Client {
     }
 
     #[cfg(test)]
-    pub fn from(held: Amount, total: Amount, locked: bool) -> Self {
+    pub fn create(held: Amount, total: Amount, locked: bool) -> Self {
         Self {
             held,
             total,

@@ -74,8 +74,8 @@ mod test {
     fn test_write_reports() {
         let mut writer = Vec::new();
         let result = HashMap::from([
-            (1, Client::from(dec!(20), dec!(100), true)),
-            (2, Client::from(dec!(6), dec!(7), false)),
+            (1, Client::create(dec!(20), dec!(100), true)),
+            (2, Client::create(dec!(6), dec!(7), false)),
         ]);
 
         write_report(result, &mut writer).expect("Expected no errors.");

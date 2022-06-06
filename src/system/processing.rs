@@ -65,7 +65,7 @@ mod test {
                 transaction_id: 1,
                 amount: deposit_amount,
             })],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![],
         );
     }
@@ -82,7 +82,7 @@ mod test {
                 transaction_id: 1,
                 amount: deposit_amount,
             })],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![],
         );
     }
@@ -110,7 +110,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(dec!(0), first_deposit_amount + second_deposit_amount, false),
+                Client::create(dec!(0), first_deposit_amount + second_deposit_amount, false),
             )]),
             vec![],
         );
@@ -139,7 +139,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(dec!(0), first_deposit_amount, false),
+                Client::create(dec!(0), first_deposit_amount, false),
             )]),
             vec![String::from("Transaction already exists with id 1.")],
         );
@@ -193,7 +193,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(dec!(0), deposit_amount - withdrawal_amount, false),
+                Client::create(dec!(0), deposit_amount - withdrawal_amount, false),
             )]),
             vec![],
         );
@@ -220,7 +220,7 @@ mod test {
                     amount: withdrawal_amount,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Insufficient funds.")],
         );
     }
@@ -245,7 +245,7 @@ mod test {
                     amount: dec!(100),
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction already exists with id 1.")],
         );
     }
@@ -272,7 +272,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(deposit_amount, deposit_amount, false),
+                Client::create(deposit_amount, deposit_amount, false),
             )]),
             vec![],
         );
@@ -298,7 +298,7 @@ mod test {
                     transaction_id: 3,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction 3 not found.")],
         );
     }
@@ -323,7 +323,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from(
                 "Client id 3 does not match transaction client id 1.",
             )],
@@ -357,7 +357,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(deposit_amount, deposit_amount, false),
+                Client::create(deposit_amount, deposit_amount, false),
             )]),
             vec![String::from("Transaction is already disputed.")],
         );
@@ -393,7 +393,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), dec!(0), true))]),
+            HashMap::from([(client_id, Client::create(dec!(0), dec!(0), true))]),
             vec![String::from("Transaction has already been charged back.")],
         );
     }
@@ -430,7 +430,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(deposit_amount, deposit_amount, false),
+                Client::create(deposit_amount, deposit_amount, false),
             )]),
             Vec::<String>::new(),
         );
@@ -456,7 +456,7 @@ mod test {
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), dec!(0), false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), dec!(0), false))]),
             vec![
                 String::from("Insufficient funds."),
                 String::from("Transaction 2 not found."),
@@ -489,7 +489,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             Vec::<String>::new(),
         );
     }
@@ -529,7 +529,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(dec!(0), deposit_amount - withdrawal_amount, false),
+                Client::create(dec!(0), deposit_amount - withdrawal_amount, false),
             )]),
             Vec::<String>::new(),
         );
@@ -555,7 +555,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction is not disputed.")],
         );
     }
@@ -590,7 +590,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction is not disputed.")],
         );
     }
@@ -622,7 +622,7 @@ mod test {
             ],
             HashMap::from([(
                 client_id,
-                Client::from(deposit_amount, deposit_amount, false),
+                Client::create(deposit_amount, deposit_amount, false),
             )]),
             vec![String::from("Transaction 3 not found.")],
         );
@@ -653,7 +653,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), dec!(0), true))]),
+            HashMap::from([(client_id, Client::create(dec!(0), dec!(0), true))]),
             Vec::<String>::new(),
         );
     }
@@ -691,7 +691,7 @@ mod test {
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, true))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, true))]),
             Vec::<String>::new(),
         );
     }
@@ -716,7 +716,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction is not disputed.")],
         );
     }
@@ -741,7 +741,7 @@ mod test {
                     transaction_id: 3,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from("Transaction 3 not found.")],
         );
     }
@@ -766,7 +766,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(dec!(0), deposit_amount, false))]),
+            HashMap::from([(client_id, Client::create(dec!(0), deposit_amount, false))]),
             vec![String::from(
                 "Client id 3 does not match transaction client id 1.",
             )],
@@ -800,7 +800,7 @@ mod test {
                     transaction_id: deposit_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(deposit_amount, dec!(0), false))]),
+            HashMap::from([(client_id, Client::create(deposit_amount, dec!(0), false))]),
             vec![],
         );
     }
@@ -832,7 +832,7 @@ mod test {
                     transaction_id: withdrawal_transaction_id,
                 }),
             ],
-            HashMap::from([(client_id, Client::from(deposit_amount, dec!(0), false))]),
+            HashMap::from([(client_id, Client::create(deposit_amount, dec!(0), false))]),
             vec![],
         );
     }
