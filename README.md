@@ -30,7 +30,7 @@ Although the spec describes the input CSV as one transaction per row, I decided 
 
 ### Events
 
-Originally my Event enum had all five events as separate members, with shared fields being duplicated in each. Now I've got two enum members: transactions and dispute steps, each with a kind enum to further specify what kind of event it is. Both of these options have pros and cons: the DRYer approach expresses the taxonomy of events more clearly, by grouping transactions and dispute steps separately, however it's a little more clunky to instantiate a given enum value because you need to specify two 'kinds' e.g. transaction and deposit, whereas with the DRYer approach you could just specify that it's a deposit. You could write little convenience functions to get around that but it would be boilerplatey. As with all DRY vs non-DRY debacles, there's a risk that some new requirement comes along that puts pressure on your abstraction (e.g. for a contrived example a chargeback event may also specify some additional chargeback amount). In that case you could just chuck the extra info in the DisputeStepKind enum chargeback member but it might still be messier than just having a flat enum of the different events.
+Originally my Event enum had all five events as separate members, with shared fields being duplicated in each. Now I've got two enum members: transactions and dispute steps, each with a kind enum to further specify what kind of event it is. Both of these options have pros and cons: the DRYer approach expresses the taxonomy of events more clearly, by grouping transactions and dispute steps separately, however it's a little more clunky to instantiate a given enum value because you need to specify two 'kinds' e.g. transaction and deposit, whereas with the less DRY approach you could just specify that it's a deposit. You could write little convenience functions to get around that but it would be boilerplatey. As with all DRY vs non-DRY debacles, there's a risk that some new requirement comes along that puts pressure on your abstraction (e.g. for a contrived example a chargeback event may also specify some additional chargeback amount). In that case you could just chuck the extra info in the DisputeStepKind enum chargeback member but it might still be messier than just having a flat enum of the different events.
 
 ### Clients and Transactions
 
@@ -62,6 +62,8 @@ One snag I hit was in deserializing our amounts, because I'm using the rust_deci
 ## The System
 
 I've got a function for processing events which takes the Events iterator and returns the resultant clients. It just so happens to make use of a Processor struct which maintains the state of clients/transactions and processes each event, but that's an implementation detail so I'm only testing that struct indirectly via the original function.
+
+The spec mentions concurrent streams of events. Assuming that we have different streams where a given client only ever appears in one stream, one could concurrently process those events, then merge the results before outputting the final report. I haven't specifically handled that use case but it would be easy enough to support it.
 
 ### Storage of state
 
