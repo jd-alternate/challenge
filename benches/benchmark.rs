@@ -1,4 +1,4 @@
-use std::io;
+use std::{fmt::Write, io};
 
 // see https://bheisler.github.io/criterion.rs/book/getting_started.html
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -37,10 +37,8 @@ fn generate_csv() -> String {
                 let transaction_id = max_transaction_id;
                 let amount = rand::random::<u16>();
                 client_transactions.push((client_id, transaction_id));
-                csv.push_str(&format!(
-                    "{},{},{},{}\n",
-                    kind, client_id, transaction_id, amount
-                ));
+                writeln!(&mut csv, "{kind},{client_id},{transaction_id},{amount}")
+                    .expect("Failed to write to csv");
             }
             _ => {
                 let kind = match rng.gen_range(0..2) {
@@ -50,11 +48,12 @@ fn generate_csv() -> String {
                     _ => unreachable!(),
                 };
 
-                if client_transactions.len() > 0 {
+                if !client_transactions.is_empty() {
                     let (client_id, transaction_id) = client_transactions
                         .get(rng.gen_range(0..client_transactions.len()))
                         .expect("Expected a client transaction.");
-                    csv.push_str(&format!("{},{},{},\n", kind, client_id, transaction_id));
+                    writeln!(&mut csv, "{kind},{client_id},{transaction_id},")
+                        .expect("Failed to write to csv");
                 }
             }
         }
