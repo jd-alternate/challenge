@@ -10,7 +10,7 @@ I decided to split up my code into three parts:
 - formatting, which handles reading and writing the data.
 - the system, which contains the business logic
 
-The important split is between the system and the formatting: I don't want my business logic having any dependence on the formatting, because if we later want to be able to read from other formats like JSON, I shouldn't have to change my business logic code. So my business logic code just accepts an interator of Events and processes them, then returns the resultant clients. It's up to the formatting code to work out how to construct such an iterator based on the input. Using an iterator makes for slightly hairier function signatures, but allows us to stream data from the input without having to load it all into memory first.
+The important split is between the system and the formatting: I don't want my business logic having any dependence on the formatting, because if we later want to be able to read from other formats like JSON, I shouldn't have to change my business logic code. So my business logic code just accepts an iterator of Events and processes them, then returns the resultant clients. It's up to the formatting code to work out how to construct such an iterator based on the input. Using an iterator makes for slightly hairier function signatures, but allows us to stream data from the input without having to load it all into memory first.
 
 Some more detail on each of the three parts:
 
